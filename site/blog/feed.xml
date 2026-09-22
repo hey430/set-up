@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Haul House Blog</title>
+    <link>https://YOUR-DOMAIN.com/blog/</link>
+    <description>UGC, TikTok Shop and creator-marketing insights from Haul House.</description>
+    <language>en-us</language>
+    <item>
+      <title>What Is UGC? Why Creator-Led Ads Outsell Polished Brand Content</title>
+      <link>https://YOUR-DOMAIN.com/blog/what-is-ugc-content.html</link>
+      <guid>https://YOUR-DOMAIN.com/blog/what-is-ugc-content.html</guid>
+      <pubDate>Tue, 15 Sep 2026 09:00:00 +0000</pubDate>
+      <description>UGC isn&#x27;t &quot;cheap content&quot;. It&#x27;s the native language of short-form feeds. Here&#x27;s what it is, why it converts, and how to brief it properly.</description>
+    </item>
+    <item>
+      <title>How to Grow on TikTok Shop With Affiliate Creators: A Brand Playbook</title>
+      <link>https://YOUR-DOMAIN.com/blog/tiktok-shop-affiliate-program-guide.html</link>
+      <guid>https://YOUR-DOMAIN.com/blog/tiktok-shop-affiliate-program-guide.html</guid>
+      <pubDate>Tue, 08 Sep 2026 09:00:00 +0000</pubDate>
+      <description>Affiliates turn TikTok Shop from one storefront into thousands. Here&#x27;s how we recruit, brief and scale creators who actually move product.</description>
+    </item>
+    <item>
+      <title>The First 3 Seconds: How to Write Hooks That Stop the Scroll</title>
+      <link>https://YOUR-DOMAIN.com/blog/scroll-stopping-hooks.html</link>
+      <guid>https://YOUR-DOMAIN.com/blog/scroll-stopping-hooks.html</guid>
+      <pubDate>Fri, 28 Aug 2026 09:00:00 +0000</pubDate>
+      <description>Most short-form videos are decided in the first three seconds. These are the hook types we use in TikTok and UGC scripts, and how we test them.</description>
+    </item>
+    <item>
+      <title>Case Study: How Pete&#x27;s Pasta Built a TikTok Shop Affiliate Engine</title>
+      <link>https://YOUR-DOMAIN.com/blog/petes-pasta-tiktok-shop-case-study.html</link>
+      <guid>https://YOUR-DOMAIN.com/blog/petes-pasta-tiktok-shop-case-study.html</guid>
+      <pubDate>Tue, 18 Aug 2026 09:00:00 +0000</pubDate>
+      <description>Six months, 19.18K affiliates, 10.6M impressions and a $65K+ peak month. How we built Pete&#x27;s Pasta&#x27;s TikTok Shop program.</description>
+    </item>
+  </channel>
+</rss>
