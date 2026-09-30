@@ -221,6 +221,168 @@
     }
   }
 
+  /* ---------- videos: hero feed, 2x reel, hover previews, pop-out player ---------- */
+  var grid = document.querySelector('.vid-grid');
+  var VIDEOS = [];
+  try { VIDEOS = JSON.parse(grid ? grid.getAttribute('data-videos') : '[]') || []; } catch (err) { VIDEOS = []; }
+  var SPEED = 2;
+  var safePlay = function (v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); };
+  var loadOnce = function (v) {
+    if (!v.getAttribute('src') && v.dataset.src) { v.src = v.dataset.src; }
+  };
+
+  // hero phone: cycle every clip at 2x
+  var feed = document.querySelector('.tt-feed');
+  if (feed && VIDEOS.length) {
+    var feedIdx = 0;
+    var heroHandle = document.querySelector('.tt-handle');
+    var heroProduct = document.querySelector('.tt-product');
+    var heroBar = document.querySelector('.tt-progress span');
+    var showFeed = function (i) {
+      feedIdx = i % VIDEOS.length;
+      var v = VIDEOS[feedIdx];
+      feed.classList.remove('is-ready');
+      feed.poster = v.poster;
+      feed.src = v.loop;
+      feed.defaultPlaybackRate = SPEED;
+      if (heroHandle) heroHandle.textContent = v.handle;
+      if (heroProduct) heroProduct.textContent = v.product;
+      if (!reduceMotion.matches) safePlay(feed);
+    };
+    feed.addEventListener('playing', function () { feed.playbackRate = SPEED; feed.classList.add('is-ready'); });
+    feed.addEventListener('ended', function () { showFeed(feedIdx + 1); });
+    if (heroBar) {
+      heroBar.style.animation = 'none';
+      feed.addEventListener('timeupdate', function () {
+        if (feed.duration) heroBar.style.transform = 'scaleX(' + (feed.currentTime / feed.duration) + ')';
+      });
+    }
+    showFeed(0);
+    if (reduceMotion.matches) feed.classList.add('is-ready');
+  }
+
+  // 2x reel: only phones on screen decode and play
+  var reelVids = document.querySelectorAll('.reel-phone video');
+  if (reelVids.length && 'IntersectionObserver' in window) {
+    var reelObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var v = entry.target;
+        if (entry.isIntersecting && !reduceMotion.matches && !document.hidden) {
+          loadOnce(v);
+          v.defaultPlaybackRate = SPEED;
+          v.playbackRate = SPEED;
+          safePlay(v);
+        } else {
+          v.pause();
+        }
+      });
+    }, { rootMargin: '0px 120px' });
+    reelVids.forEach(function (v) {
+      v.addEventListener('playing', function () { v.playbackRate = SPEED; });
+      reelObserver.observe(v);
+    });
+  }
+
+  // grid: muted preview on hover
+  document.querySelectorAll('.vid-open').forEach(function (btn) {
+    var v = btn.querySelector('video');
+    if (!v) return;
+    btn.addEventListener('pointerenter', function (e) {
+      if (e.pointerType !== 'mouse' || reduceMotion.matches) return;
+      loadOnce(v);
+      safePlay(v);
+    });
+    btn.addEventListener('pointerleave', function () { v.pause(); v.classList.remove('is-playing'); });
+    v.addEventListener('playing', function () { v.classList.add('is-playing'); });
+  });
+
+  // pop-out player
+  var box = document.querySelector('.vbox');
+  if (box && VIDEOS.length && typeof box.showModal === 'function') {
+    var boxVideo = box.querySelector('.vbox-video');
+    var boxPhone = box.querySelector('.vbox-phone');
+    var boxHandle = box.querySelector('.vbox-handle');
+    var boxProduct = box.querySelector('.vbox-product');
+    var boxLink = box.querySelector('.vbox-link');
+    var boxToggle = box.querySelector('.vbox-toggle');
+    var boxMute = box.querySelector('.vbox-mute');
+    var boxBar = box.querySelector('.vbox-progress span');
+    var boxIdx = 0;
+    var opener = null;
+
+    var setVideo = function (i) {
+      boxIdx = (i + VIDEOS.length) % VIDEOS.length;
+      var v = VIDEOS[boxIdx];
+      boxVideo.poster = v.poster;
+      boxVideo.src = v.src;
+      boxHandle.textContent = v.handle;
+      boxProduct.textContent = v.product;
+      if (v.url) { boxLink.href = v.url; boxLink.hidden = false; } else { boxLink.hidden = true; boxLink.removeAttribute('href'); }
+      boxBar.style.transform = 'scaleX(0)';
+      box.setAttribute('aria-label', 'Video: ' + v.handle + ', ' + v.product);
+      safePlay(boxVideo);
+    };
+    var pop = function (fromEl) {
+      boxPhone.classList.remove('is-popping');
+      var to = boxPhone.getBoundingClientRect();
+      var from = fromEl && fromEl.getBoundingClientRect();
+      if (from && to.width) {
+        var dx = (from.left + from.width / 2) - (to.left + to.width / 2);
+        var dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+        boxPhone.style.setProperty('--from', 'translate(' + dx + 'px,' + dy + 'px) scale(' + (from.width / to.width) + ')');
+      }
+      void boxPhone.offsetWidth;
+      boxPhone.classList.add('is-popping');
+    };
+    var openBox = function (i, fromEl) {
+      opener = fromEl;
+      box.showModal();
+      setVideo(i);
+      pop(fromEl);
+    };
+    var closeBox = function () { if (box.open) box.close(); };
+
+    box.addEventListener('close', function () {
+      boxVideo.pause();
+      boxVideo.removeAttribute('src');
+      boxVideo.load();
+      if (opener && opener.focus) opener.focus({ preventScroll: true });
+    });
+    boxPhone.addEventListener('animationend', function () { boxPhone.classList.remove('is-popping'); });
+    var togglePlay = function () { if (boxVideo.paused) safePlay(boxVideo); else boxVideo.pause(); };
+    boxVideo.addEventListener('click', togglePlay);
+    boxToggle.addEventListener('click', togglePlay);
+    boxVideo.addEventListener('play', function () { box.classList.remove('is-paused'); boxToggle.setAttribute('aria-label', 'Pause'); });
+    boxVideo.addEventListener('pause', function () { box.classList.add('is-paused'); boxToggle.setAttribute('aria-label', 'Play'); });
+    boxVideo.addEventListener('ended', function () { setVideo(boxIdx + 1); });
+    boxVideo.addEventListener('timeupdate', function () {
+      if (boxVideo.duration) boxBar.style.transform = 'scaleX(' + (boxVideo.currentTime / boxVideo.duration) + ')';
+    });
+    boxMute.addEventListener('click', function () {
+      boxVideo.muted = !boxVideo.muted;
+      boxMute.setAttribute('aria-pressed', String(boxVideo.muted));
+      boxMute.setAttribute('aria-label', boxVideo.muted ? 'Unmute' : 'Mute');
+    });
+    box.querySelector('.vbox-prev').addEventListener('click', function () { setVideo(boxIdx - 1); pop(null); });
+    box.querySelector('.vbox-next').addEventListener('click', function () { setVideo(boxIdx + 1); pop(null); });
+    box.querySelector('.vbox-close').addEventListener('click', closeBox);
+    box.addEventListener('click', function (e) {
+      if (e.target === box || e.target.classList.contains('vbox-stage')) closeBox();
+    });
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { setVideo(boxIdx + 1); pop(null); }
+      else if (e.key === 'ArrowLeft') { setVideo(boxIdx - 1); pop(null); }
+      else if (e.key === ' ' && e.target === boxVideo) { e.preventDefault(); togglePlay(); }
+    });
+
+    document.querySelectorAll('[data-video]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var phone = el.querySelector('.phone-body, .vid-thumb') || el;
+        openBox(parseInt(el.getAttribute('data-video'), 10) || 0, phone);
+      });
+    });
+  }
+
   /* ---------- terrain background ----------
      A ridged height field drifting toward the viewer on a 9s cycle. Rows are drawn
      far-to-near and each row is filled before it is stroked, so nearer ridges occlude
