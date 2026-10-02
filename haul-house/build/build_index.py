@@ -1,5 +1,6 @@
 import json, html, re
 from common import *
+from dash import dashboard_html
 
 VIDEOS = [
     dict(id="7657638719805000990", handle="@watenest", product="Audien Atom hearing aids",
@@ -149,12 +150,12 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
       <div class="hero-copy">
         <h1 id="hero-title">
           <span class="eyebrow">TikTok Shop Growth Agency</span>
-          Where Hauls<br>Become <span class="grad-text">Hits.</span>
+          We grow brands on TikTok Shop. <span class="grad-text">That's the whole job.</span>
         </h1>
         <p class="hero-lede">Haul House builds and runs TikTok Shops. We launch your shop, recruit the affiliate creators who actually sell, and scale their best videos with GMV Max. TikTok Shop is the only channel we work in.</p>
         <div class="hero-ctas">
           <a href="#contact" class="btn btn--primary">Book a Call {svg(I["arrow"])}</a>
-          <a href="#performances" class="btn btn--ghost">Watch the Work</a>
+          <a href="#performances" class="btn btn--ghost">See the Numbers</a>
         </div>
         <ul class="hero-trust" aria-label="Highlights">
           <li>{svg(I["check"])}19.18K affiliates activated</li>
@@ -210,7 +211,7 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
         </div>
       </div>
     </div>
-    <div class="reel" data-reel>
+    <div class="reel" data-reel data-videos="{videos_json}">
       <div class="reel-track">
 {chr(10).join(reel_phone(i, v, False) for i, v in enumerate(VIDEOS))}
 {chr(10).join(reel_phone(i, v, True) for i, v in enumerate(VIDEOS))}
@@ -270,27 +271,7 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
     </div>
   </section>
 
-  <section id="performances" class="section-alt" aria-labelledby="perf-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Proof, Not Promises</p>
-        <h2 id="perf-title">Best Performances</h2>
-        <p>Shoppable videos from our creator network. Tap any video to watch it with sound.</p>
-      </div>
-
-      <ul class="vid-grid" data-videos="{videos_json}">
-{chr(10).join(vid_card(i, v) for i, v in enumerate(VIDEOS))}
-      </ul>
-
-      <div class="more-links">
-        <p>More live videos on TikTok</p>
-        <ul>
-{chr(10).join(f'          <li><a href="{u}" target="_blank" rel="noopener noreferrer">{h} {svg(I["out"])}<span class="sr-only">(opens TikTok in a new tab)</span></a></li>' for h, u in MORE_LINKS)}
-        </ul>
-      </div>
-    </div>
-  </section>
-
+{dashboard_html()}
   <section id="work" aria-labelledby="work-title">
     <div class="wrap">
       <div class="section-head">
@@ -362,7 +343,7 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
 
   <section id="contact" aria-labelledby="contact-title">
     <div class="wrap">
-      <div class="contact-shell">
+      <div class="contact-shell contact-shell--solo">
         <div class="contact-left">
           <div>
             <h2 id="contact-title">Let's Build Your TikTok Shop</h2>
@@ -372,54 +353,15 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
             <li>{svg(I["shield"])}<span><b>You own everything.</b> Shop, ad account, creator relationships, content rights and data stay yours if you leave.</span></li>
             <li>{svg(I["x"])}<span><b>We say no.</b> Under 50% gross margin, thin inventory or a 30-day verdict means we're not the right fit yet.</span></li>
           </ul>
+          <div class="contact-cta">
+            <a class="btn btn--light" href="mailto:{EMAIL}?subject=Book%20a%20call%20with%20Haul%20House">Book a Call {svg(I["arrow"])}</a>
+            <p>We reply within one business day.</p>
+          </div>
           <ul class="contact-direct">
-            <li><span class="k">Book a call</span><a href="mailto:{EMAIL}">{svg(I["mail"])}{EMAIL}</a></li>
+            <li><span class="k">Email</span><a href="mailto:{EMAIL}">{svg(I["mail"])}{EMAIL}</a></li>
             <li><span class="k">Quick questions</span><a href="tel:{PHONE}">{svg(I["phone"])}{PHONE_H}</a></li>
           </ul>
         </div>
-
-        <form class="contact-form" id="inquiry-form" data-to="{EMAIL}" novalidate aria-labelledby="contact-title">
-          <div class="field">
-            <label for="f-name">Your name<span class="req" aria-hidden="true">*</span></label>
-            <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="name-error">
-            <p class="field-error" id="name-error" hidden>{svg(I["err"])}<span></span></p>
-          </div>
-          <div class="field">
-            <label for="f-email">Work email<span class="req" aria-hidden="true">*</span></label>
-            <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required aria-describedby="email-error" placeholder="you@brand.com">
-            <p class="field-error" id="email-error" hidden>{svg(I["err"])}<span></span></p>
-          </div>
-          <div class="field">
-            <label for="f-brand">Brand / company<span class="req" aria-hidden="true">*</span></label>
-            <input id="f-brand" name="brand" type="text" autocomplete="organization" required aria-describedby="brand-error">
-            <p class="field-error" id="brand-error" hidden>{svg(I["err"])}<span></span></p>
-          </div>
-          <div class="field">
-            <label for="f-website">TikTok Shop or website<span class="opt">(optional)</span></label>
-            <input id="f-website" name="website" type="url" autocomplete="url" inputmode="url" placeholder="https://">
-          </div>
-          <div class="field full">
-            <label for="f-service">Where are you today?</label>
-            <select id="f-service" name="service">
-              <option>Not on TikTok Shop yet: need a launch</option>
-              <option>Live, but sales are flat</option>
-              <option>Selling: want to scale affiliates</option>
-              <option>Selling: want to scale GMV Max ads</option>
-              <option>Interested in TikTok LIVE</option>
-              <option>Not sure yet</option>
-            </select>
-          </div>
-          <div class="field full">
-            <label for="f-message">Tell us about your product<span class="req" aria-hidden="true">*</span></label>
-            <textarea id="f-message" name="message" required aria-describedby="message-hint message-error"></textarea>
-            <p class="field-hint" id="message-hint">What you sell, your price point, rough gross margin and what a win looks like.</p>
-            <p class="field-error" id="message-error" hidden>{svg(I["err"])}<span></span></p>
-          </div>
-          <div class="form-foot full">
-            <button class="btn btn--primary" type="submit">Send inquiry {svg(I["arrow"])}</button>
-            <p class="form-status" id="form-status" role="status" aria-live="polite"><span aria-hidden="true">*</span> Required</p>
-          </div>
-        </form>
       </div>
     </div>
   </section>
