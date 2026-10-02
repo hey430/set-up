@@ -119,6 +119,17 @@ WHY = [
 ]
 why_html = "\n".join(f'''        <div class="why-stat"><b>{n}</b><p>{t}</p><small>Source: {s}</small></div>''' for n, t, s in WHY)
 
+RULES = [
+    ("We never auto-approve samples.", "A person reviews about 99% of requests. Creators need 400+ average views, an 80%+ post rate and $500+ in GMV. They also have to be able to explain your product credibly. If they can't, they don't get a sample, however big their following."),
+    ("Nothing goes out in your name without your sign-off.", "You approve creator lists, briefs and outreach messages before they go out. You'll never find out from your fulfilment team what we've been saying to creators."),
+    ("One point of contact, start to finish.", "A dedicated account lead who knows your marketing calendar, your sale dates and your team. Everything goes through you, never around you."),
+    ("We start with your competitors' creators.", "Before outreach starts, we pull the affiliates already selling in your category. Their best hooks and scripts go into your briefs."),
+    ("Winners get retainers.", "Creators who sell consistently move onto monthly retainers, usually 20 to 30 videos a month. That gives you a steady roster instead of a lucky month."),
+    ("Ad budget follows proven videos.", "Spark codes from the creator videos that already sell go into your Manual and GMV Max campaigns. We don't spend on guesses."),
+    ("You can see where every sample went.", "Every week you'll see how many creators got samples, who they are, their expected reach and revenue per sample sent. Behind it, a shared CRM is updated daily with outreach, videos, spark codes, GMV and ad results."),
+]
+rules_html = "\n".join(f'''        <li class="rule"><span class="rule-num" aria-hidden="true">{n:02d}</span><div><h3>{e(t)}</h3><p>{e(d)}</p></div></li>''' for n, (t, d) in enumerate(RULES, 1))
+
 faq_html = "\n".join(f'''          <details class="faq-item"{" open" if k == 0 else ""}>
             <summary>{e(q)}<span class="faq-icon" aria-hidden="true">{svg(I["plus"])}</span></summary>
             <div class="faq-answer">{a}</div>
@@ -129,7 +140,7 @@ blog_html = "\n".join(post_card(p, "blog/" + p["slug"] + ".html") for p in POSTS
 DOCK = [("#top", "Home", "", '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),
         ("#services", "Services", "", I["bag"]),
         ("#performances", "Results", "", I["play"].replace(' fill="currentColor"', "")),
-        ("#work", "Case Files", "", '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
+        ("#rules", "House Rules", "", '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
         ("#blog", "Blog", "", '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>'),
         ("#faq", "FAQ", " dock-item--hide-sm", I["q"]),
         ("#contact", "Book a Call", " dock-item--cta", '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>')]
@@ -152,14 +163,14 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
           <span class="eyebrow">TikTok Shop Growth Agency</span>
           We grow brands on TikTok Shop. <span class="grad-text">That's the whole job.</span>
         </h1>
-        <p class="hero-lede">Haul House builds and runs TikTok Shops. We launch your shop, recruit the affiliate creators who actually sell, and scale their best videos with GMV Max. TikTok Shop is the only channel we work in.</p>
+        <p class="hero-lede">Creator recruiting, hand-approved samples, creator challenges and GMV Max, run every day by a team that does nothing else. One of our partners is Director and Head of TikTok Shop at a $100M+ brand, so you get advice from someone who has to hit the number himself.</p>
         <div class="hero-ctas">
-          <a href="#contact" class="btn btn--primary">Book a Call {svg(I["arrow"])}</a>
-          <a href="#performances" class="btn btn--ghost">See the Numbers</a>
+          <a href="#contact" class="btn btn--primary">Book a Strategy Call {svg(I["arrow"])}</a>
+          <a href="#performances" class="btn btn--ghost">See the Numbers ↓</a>
         </div>
         <ul class="hero-trust" aria-label="Highlights">
-          <li>{svg(I["check"])}19.18K affiliates activated</li>
-          <li>{svg(I["check"])}10.6M impressions for one brand</li>
+          <li>{svg(I["check"])}£496 → £187,599 a month in 4 months</li>
+          <li>{svg(I["check"])}3.41x ROI on $114K spend</li>
           <li>{svg(I["check"])}TikTok Shop only</li>
         </ul>
       </div>
@@ -272,43 +283,17 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
   </section>
 
 {dashboard_html()}
-  <section id="work" aria-labelledby="work-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Selected Work</p>
-        <h2 id="work-title">Case Files</h2>
-        <p>Two brands we've built inside TikTok Shop. The numbers come straight from their Seller Center reports.</p>
+  <section id="rules" aria-labelledby="rules-title">
+    <div class="wrap rules-layout">
+      <div class="section-head rules-head">
+        <p class="eyebrow">How We Run Accounts</p>
+        <h2 id="rules-title">House Rules</h2>
+        <p>Most TikTok Shop agencies follow the same steps. These are the rules we stick to that most of them skip, and they're why our accounts keep growing after the first month.</p>
+        <a class="btn btn--ghost" href="#contact">Talk to us about your shop {svg(I["arrow"])}</a>
       </div>
-
-      <div class="case-grid">
-        <article class="case-card">
-          <span class="case-tag">TikTok Shop · Affiliate Growth</span>
-          <div>
-            <p class="case-label">Case File 01</p>
-            <h3>Pete's Pasta</h3>
-            <p class="case-meta">Six-month TikTok Shop build-out in the food category, April–September 2025</p>
-          </div>
-          <dl class="case-stats">
-            <div><dt>Affiliates</dt><dd>19.18K</dd></div>
-            <div><dt>Impressions</dt><dd>10.6M</dd></div>
-            <div><dt>Build-out</dt><dd>6 mo.</dd></div>
-          </dl>
-        </article>
-
-        <article class="case-card">
-          <span class="case-tag">TikTok Shop · GMV Max</span>
-          <div>
-            <p class="case-label">Case File 02</p>
-            <h3>Pure Instinct</h3>
-            <p class="case-meta">Affiliate and GMV Max growth program, 2025</p>
-          </div>
-          <dl class="case-stats">
-            <div><dt>Total GMV</dt><dd>$223.8K</dd></div>
-            <div><dt>Shop score</dt><dd>4.6/5</dd></div>
-            <div><dt>Program</dt><dd>2025</dd></div>
-          </dl>
-        </article>
-      </div>
+      <ol class="rules-list">
+{rules_html}
+      </ol>
     </div>
   </section>
 
@@ -346,8 +331,8 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
       <div class="contact-shell contact-shell--solo">
         <div class="contact-left">
           <div>
-            <h2 id="contact-title">Let's Build Your TikTok Shop</h2>
-            <p>Tell us what you sell, your price point and your margin. On the first call we model your real TikTok Shop unit economics and tell you honestly whether the channel fits.</p>
+            <h2 id="contact-title">Let's Look at Your Shop Together</h2>
+            <p>A 30-minute call. We'll show you who is already selling in your category, what your competitors' best creators are doing, and where your TikTok Shop is losing money right now.</p>
           </div>
           <ul class="contact-promises">
             <li>{svg(I["shield"])}<span><b>You own everything.</b> Shop, ad account, creator relationships, content rights and data stay yours if you leave.</span></li>
@@ -355,7 +340,7 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
           </ul>
           <div class="contact-cta">
             <a class="btn btn--light" href="mailto:{EMAIL}?subject=Book%20a%20call%20with%20Haul%20House">Book a Call {svg(I["arrow"])}</a>
-            <p>We reply within one business day.</p>
+            <p>You may have one of our partners on the call. He's Director and Head of TikTok Shop at a $100M+ brand.</p>
           </div>
           <ul class="contact-direct">
             <li><span class="k">Email</span><a href="mailto:{EMAIL}">{svg(I["mail"])}{EMAIL}</a></li>
