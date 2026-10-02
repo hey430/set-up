@@ -411,7 +411,7 @@ section{ position:relative; z-index:1; padding:clamp(72px,10vw,120px) 0; }
   display:flex; flex-direction:column; gap:20px; padding:24px;
   transition:border-color var(--dur) ease, background var(--dur) ease;
 }
-.case-card:hover{ border-color:var(--pink); background:var(--surface-2); }
+/* case cards are static covers, no hover state */
 .case-tag{
   align-self:flex-start; display:inline-flex; align-items:center;
   font-family:var(--mono); font-size:11px; letter-spacing:0.07em; text-transform:uppercase;

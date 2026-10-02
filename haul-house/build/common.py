@@ -236,9 +236,6 @@ POSTS = [
     dict(slug="choose-tiktok-shop-agency", date="2026-08-28", cat="Hiring an Agency", icon="search", cover="var(--pink)", mins=3,
          title="How to Choose a TikTok Shop Agency: 7 Questions to Ask",
          excerpt="Most agencies added TikTok Shop to their menu last year. Ask these seven questions on the sales call and you'll know in ten minutes."),
-    dict(slug="petes-pasta-tiktok-shop-case-study", date="2026-08-18", cat="Case Study", icon="trend", cover="var(--violet)", mins=3,
-         title="Case Study: How Pete's Pasta Built a TikTok Shop Affiliate Engine",
-         excerpt="Six months, 19.18K affiliates and 10.6M impressions. How we built Pete's Pasta's TikTok Shop program in one of the platform's hardest categories."),
 ]
 
 

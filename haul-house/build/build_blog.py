@@ -171,46 +171,6 @@ BODIES["choose-tiktok-shop-agency"] = dict(
 </ul>
 ''')
 
-BODIES["petes-pasta-tiktok-shop-case-study"] = dict(
-    desc="Pete's Pasta TikTok Shop case study: a six-month affiliate build-out in the food category that activated 19.18K affiliates and 10.6M impressions.",
-    keywords="TikTok Shop case study, TikTok Shop affiliate case study, food brand TikTok Shop, Pete's Pasta",
-    toc=[("challenge", "The challenge"), ("approach", "Our approach"), ("results", "The results"), ("takeaways", "Takeaways for food and CPG")],
-    cta="Want this running for your brand? Tell us what you sell and we'll map out the first 90 days.",
-    html='''<p class="lead"><strong>Pete's Pasta partnered with Haul House for a six-month TikTok Shop build-out, April to September 2025.</strong> The focus was affiliate growth: getting the product into the kitchens and videos of the right creators, and turning that content into sales.</p>
-
-<div class="stat-row">
-  <div><b>19.18K</b><span>Affiliates activated</span></div>
-  <div><b>10.6M</b><span>Impressions</span></div>
-  <div><b>6 mo.</b><span>Apr – Sep 2025</span></div>
-</div>
-
-<h2 id="challenge">The challenge</h2>
-<p>Food is one of the hardest categories on TikTok Shop. Shoppers can't taste through a screen, so the video has to do the work: the product cooked, plated and enjoyed in a way that makes a viewer want it for dinner tonight. Pete's Pasta needed reach at a scale no brand account could reach alone.</p>
-
-<h2 id="approach">Our approach</h2>
-<h3>1. Build the machine</h3>
-<p>We started with the buyer: who buys pasta on TikTok Shop, what they respond to, and which moments are most compelling on camera. That became the core angle and the brief every creator worked from.</p>
-<h3>2. Hooks built around the first frame</h3>
-<p>Food content lives or dies on the first frame. We built hooks around the most appetising visual moments and gave creators flexible structures to adapt: weeknight-dinner videos, family reactions, recipe walkthroughs.</p>
-<h3>3. Affiliate recruitment at scale</h3>
-<p>Over six months the program reached <strong>19.18K affiliates</strong>. We prioritised creators whose audiences already cook and buy food online, and kept the brief tight so videos stayed on-message as volume grew.</p>
-<h3>4. Concentrate on what converts</h3>
-<p>As videos went live, performance data showed which creators, angles and formats converted. We moved commission and attention toward them and fed winning hooks back into the brief, so every new affiliate started from what was already working.</p>
-
-<h2 id="results">The results</h2>
-<p>Across the six-month build-out the program generated <strong>10.6 million impressions</strong> and activated <strong>19.18K affiliates</strong>, all inside TikTok Shop.</p>
-<blockquote><p>Affiliate scale turns one brand story into thousands of creator stories, and each one is a storefront.</p></blockquote>
-
-<h2 id="takeaways">Takeaways for food and CPG brands</h2>
-<ul>
-  <li><strong>Show, don't tell.</strong> In food, the demo is the pitch: the pour, the twirl, the first bite.</li>
-  <li><strong>Scale comes from affiliates.</strong> Reach at this level comes from thousands of creators, not one account.</li>
-  <li><strong>Briefs keep quality high at volume.</strong> The more creators you add, the more the brief matters.</li>
-  <li><strong>Let data steer.</strong> Feed winning hooks and creators back into the program every week.</li>
-</ul>
-<p>Read our <a href="tiktok-shop-affiliate-strategy.html">TikTok Shop affiliate strategy</a>, or <a href="../index.html#contact">book a call with Haul House</a>.</p>
-''')
-
 
 def crumbs_ld(items):
     return {"@context": "https://schema.org", "@type": "BreadcrumbList",

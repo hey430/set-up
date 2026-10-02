@@ -21,8 +21,6 @@ MORE_LINKS = [
 ]
 
 FAQ = [
-    ("Will TikTok Shop work for my product?",
-     "<p>If your product is visual, explainable in 15 seconds and carries at least 60% gross margin, probably yes. If it sells under $25, is hard to demonstrate or runs on thin margins, probably not, and we'll tell you on the first call. The channel rewards products people can see working. It punishes commodities that only win on price.</p>"),
     ("How fast will I see sales?",
      "<p>Creator-driven sales usually start in weeks 3–4. Real, repeatable revenue takes 60–90 days. Anyone promising a profitable month one is selling you the pitch, not the channel. We plan a build phase, a proof phase and a scale phase, and show you the numbers at every step. <a href=\"blog/launch-tiktok-shop.html\">See the 90-day plan</a>.</p>"),
     ("What does TikTok Shop actually cost me?",
@@ -113,7 +111,7 @@ process_html = "\n".join(f'''        <li class="process-row">
         </li>''' for n, (days, t, d) in enumerate(PROCESS, 1))
 
 WHY = [
-    ("$11.8B", "US TikTok Shop GMV in H1 2026, up 103% year over year", "Net Influencer"),
+    ("$11.8B", "US TikTok Shop GMV in the first half of 2026, up 103% year over year", "Net Influencer"),
     ("5,700+", "US shops crossed $1M in GMV in the first half of 2026", "SmartScout"),
     ("50%+", "of US shops recorded no sales at all in the same period", "SmartScout"),
     ("42%", "of US TikTok Shop GMV comes from affiliate creator content", "SmartScout"),
@@ -314,7 +312,6 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
             <div><dt>Impressions</dt><dd>10.6M</dd></div>
             <div><dt>Build-out</dt><dd>6 mo.</dd></div>
           </dl>
-          <a class="text-link" href="blog/petes-pasta-tiktok-shop-case-study.html">Read the full case study {svg(I["arrow"])}</a>
         </article>
 
         <article class="case-card">
@@ -329,7 +326,6 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
             <div><dt>Shop score</dt><dd>4.6/5</dd></div>
             <div><dt>Program</dt><dd>2025</dd></div>
           </dl>
-          <a class="text-link" href="#contact">Get a plan like this {svg(I["arrow"])}</a>
         </article>
       </div>
     </div>
