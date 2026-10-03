@@ -90,8 +90,8 @@ ORG_LD["hasOfferCatalog"] = {
                         for _, t, d, _ in SERVICES],
 }
 
-NAV = [("services", "Services"), ("process", "Process"), ("performances", "Results"),
-       ("rules", "House Rules"), ("blog", "Blog"), ("faq", "FAQ")]
+NAV = [("services", "Services"), ("rules", "House Rules"),
+       ("performances", "Results"), ("blog", "Blog"), ("faq", "FAQ")]
 
 
 def ld(obj):
@@ -200,7 +200,6 @@ def footer(root):
         <ul>
           <li><a href="{home}#rules">House Rules</a></li>
           <li><a href="{blog}">Blog</a></li>
-          <li><a href="{home}#process">The First 90 Days</a></li>
           <li><a href="{home}#faq">FAQ</a></li>
         </ul>
       </div>

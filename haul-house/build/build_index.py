@@ -139,8 +139,8 @@ blog_html = "\n".join(post_card(p, "blog/" + p["slug"] + ".html") for p in POSTS
 
 DOCK = [("#top", "Home", "", '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),
         ("#services", "Services", "", I["bag"]),
-        ("#performances", "Results", "", I["play"].replace(' fill="currentColor"', "")),
         ("#rules", "House Rules", "", '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
+        ("#performances", "Results", "", I["play"].replace(' fill="currentColor"', "")),
         ("#blog", "Blog", "", '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>'),
         ("#faq", "FAQ", " dock-item--hide-sm", I["q"]),
         ("#contact", "Book a Call", " dock-item--cta", '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>')]
@@ -255,21 +255,6 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
     </div>
   </section>
 
-  <section id="process" aria-labelledby="process-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">How We Work</p>
-        <h2 id="process-title">Your First 90 Days</h2>
-        <p>Most brands fail on TikTok Shop because they judge it at the wrong time. We commit to 90 days of real execution, with a written plan for every stage.</p>
-      </div>
-
-      <ol class="process-list">
-{process_html}
-      </ol>
-    </div>
-  </section>
-
-{dashboard_html()}
   <section id="rules" aria-labelledby="rules-title">
     <div class="wrap rules-layout">
       <div class="section-head rules-head">
@@ -284,6 +269,7 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
     </div>
   </section>
 
+{dashboard_html()}
   <section id="blog" class="section-alt" aria-labelledby="blog-title">
     <div class="wrap">
       <div class="section-head section-head--row">
