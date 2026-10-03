@@ -1097,3 +1097,11 @@ body:has(> .dock) .site-footer{ padding-bottom:calc(32px + 96px); }
 .rule-num{ font-family:var(--display); font-size:30px; line-height:1; background:var(--grad-brand); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .rule h3{ margin:0 0 6px; font-family:var(--body); font-weight:800; font-size:17.5px; line-height:1.35; }
 .rule p{ margin:0; color:var(--text-muted); font-size:15px; line-height:1.6; }
+
+/* ---------- per-brand revenue (no totals) ---------- */
+.dash-donut-big{ font-family:var(--display); font-size:clamp(34px,3.6vw,44px); line-height:1; color:var(--text); }
+.dash-viz--rank{ flex-direction:row; align-items:center; gap:14px; }
+.dash-rank{ font-family:var(--display); font-size:44px; line-height:1; background:var(--grad-brand); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dash-viz--rank b{ display:block; font-size:15px; color:var(--text); }
+.dash-viz--rank span:not(.dash-rank){ font-size:12.5px; color:var(--text-faint); }
+.dash-total .dash-card-title{ margin-top:8px; font-size:clamp(22px,2.4vw,28px); }

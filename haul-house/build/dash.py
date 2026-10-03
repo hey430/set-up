@@ -6,7 +6,7 @@ BRANDS = [
          desc="As Head of TikTok Shop, our partner scaled Audien's affiliate program past 2,000 creators and took the product to a #1 Best Seller spot. That playbook sits behind how we run every client account.",
          hero=("$1.5M", "GMV in 6 weeks", 1.5, 1, "$", "M"),
          stats=[("15.6K", "orders"), ("2,000+", "affiliates"), ("#1", "Best Seller")],
-         viz=("share", 1500000)),
+         viz=("rank", 1)),
     dict(n="02", cat="Beauty · UK", name="Cosmetics brand", note="Launched from zero",
          desc="We brought 2,000 creators on board in the first 15 days and approved every sample by hand. Our best performers went onto retainers. Then we ran an 11-day Black Friday challenge that brought in £74K by itself.",
          hero=("£188K", "GMV in first 60 days", 188, 0, "£", "K"),
@@ -103,6 +103,8 @@ def _donut():
 
 def _viz(b):
     kind, val = b["viz"]
+    if kind == "rank":
+        return '''<div class="dash-viz dash-viz--rank"><span class="dash-rank">#1</span><div><b>Best Seller</b><span>reached in 6 weeks</span></div></div>'''
     if kind == "share":
         pct = val / USD_TOTAL * 100
         return f'''<div class="dash-viz"><div class="dash-viz-head"><span>Share of US sales</span><b>{pct:.0f}%</b></div>
@@ -138,9 +140,6 @@ def _card(k, b):
 def dashboard_html():
     segs, legend, creator_total = _donut()
     cards = "\n".join(_card(k, b) for k, b in enumerate(BRANDS))
-    total = count(money(USD_TOTAL) + "+", round(USD_TOTAL / 1e6, 2), 2, "$", "M+")
-    orders = count(f"{ORDERS_TOTAL:,}", ORDERS_TOTAL, 0, "", "")
-    creators = count(f"{creator_total:,}+", creator_total, 0, "", "+")
     return f'''  <section id="performances" class="section-alt dash-section" aria-labelledby="perf-title">
     <div class="wrap">
       <div class="section-head">
@@ -153,27 +152,24 @@ def dashboard_html():
         <article class="dash-card dash-total" style="--i:0">
           <div class="dash-total-head">
             <div>
-              <p class="dash-label"><span class="dash-live"></span>Combined sales · US shops</p>
-              <p class="dash-big">{total}</p>
-              <p class="dash-sub">Across Audien, Pete's Pasta and Pure Instinct, plus <b>£188K</b> from a UK beauty launch.</p>
+              <p class="dash-label"><span class="dash-live"></span>Revenue by shop</p>
+              <h3 class="dash-card-title">Each brand, in its own numbers.</h3>
             </div>
-            <span class="dash-chip">4 shops · US + UK</span>
+            <span class="dash-chip">UK · Cosmetics brand · £188K in 60 days</span>
           </div>
-          <ol class="dash-bars" aria-label="Sales by shop in US dollars">
+          <ol class="dash-bars" aria-label="Revenue by US shop in US dollars">
 {_bars()}
           </ol>
         </article>
 
         <article class="dash-card dash-creators" style="--i:1">
-          <p class="dash-label">Orders · Audien + Pete's Pasta</p>
-          <p class="dash-mid">{orders}</p>
-          <p class="dash-label" style="margin-top:6px">Creators &amp; affiliates activated</p>
+          <p class="dash-label">Creators &amp; affiliates by shop</p>
           <div class="dash-donut-wrap">
             <svg class="dash-donut" viewBox="0 0 42 42" aria-hidden="true">
               <circle class="dash-donut-bg" r="15.915" cx="21" cy="21"/>
               {segs}
             </svg>
-            <div class="dash-donut-center">{creators}<span>across 3 shops</span></div>
+            <div class="dash-donut-center"><span class="dash-donut-big">3</span><span>shops</span></div>
           </div>
           <ul class="dash-legend">{legend}</ul>
         </article>

@@ -241,19 +241,6 @@ page = head("Haul House | TikTok Shop Agency for Brands That Want to Scale", SIT
     </div>
   </div>
 
-  <section id="why" aria-labelledby="why-title">
-    <div class="wrap why-layout">
-      <div class="section-head" style="margin:0">
-        <p class="eyebrow">Why TikTok Shop, Why Now</p>
-        <h2 id="why-title">The Channel Works. Just Not on Its Own.</h2>
-        <p>TikTok Shop is the fastest-growing commerce channel in the US, and most shops on it still sell nothing. The gap between those two numbers is operators: the right creators, the right videos and ads that have been given time to learn.</p>
-      </div>
-      <div class="why-grid">
-{why_html}
-      </div>
-    </div>
-  </section>
-
   <section id="services" class="section-alt" aria-labelledby="services-title">
     <div class="wrap">
       <div class="section-head">
