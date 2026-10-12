@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { hasFinePointer, prefersReducedMotion } from '../../lib/env'
+import { asset, hasFinePointer, prefersReducedMotion } from '../../lib/env'
 
 /* A deliberately tiny raw-WebGL renderer: one quad, one texture, one shader.
    Cheaper than a second three.js scene for a single hover effect. */
@@ -189,8 +189,8 @@ export default function RipplePortrait({ alt, className = '' }) {
     <div ref={wrap} className={`relative ${className}`} data-cursor="Hello">
       <img
         ref={img}
-        src="/images/rameesha-portrait-900.webp"
-        srcSet="/images/rameesha-portrait-560.webp 560w, /images/rameesha-portrait-900.webp 900w"
+        src={asset('images/rameesha-portrait-900.webp')}
+        srcSet={`${asset('images/rameesha-portrait-560.webp')} 560w, ${asset('images/rameesha-portrait-900.webp')} 900w`}
         sizes="(min-width: 1200px) 34vw, (min-width: 768px) 42vw, 88vw"
         width="900"
         height="909"

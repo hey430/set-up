@@ -2,6 +2,9 @@
 
 export const isBrowser = typeof window !== 'undefined'
 
+/** Resolve a file in /public against Vite's base (works at a domain root or a sub-path). */
+export const asset = (path) => `${import.meta.env.BASE_URL}${path}`
+
 export function prefersReducedMotion() {
   return isBrowser && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }

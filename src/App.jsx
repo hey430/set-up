@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { ScrollTrigger, useGSAP } from './lib/gsap'
 import { initSmoothScroll, startScroll, stopScroll } from './lib/scroll'
 import { sceneState, recomputeStage } from './lib/sceneState'
-import { hasWebGL } from './lib/env'
+import { asset, hasWebGL } from './lib/env'
 import { useFinePointer, useIsMobile, useReducedMotion } from './hooks/useMediaQuery'
 
 import Preloader from './components/ui/Preloader'
@@ -44,7 +44,7 @@ export default function App() {
     ;(document.fonts?.ready ?? Promise.resolve()).then(() => done('fonts'))
     const img = new Image()
     img.onload = img.onerror = () => done('portrait')
-    img.src = window.innerWidth < 768 ? '/images/rameesha-portrait-560.webp' : '/images/rameesha-portrait-900.webp'
+    img.src = asset(window.innerWidth < 768 ? 'images/rameesha-portrait-560.webp' : 'images/rameesha-portrait-900.webp')
     return () => {
       alive = false
     }
