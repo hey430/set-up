@@ -12,8 +12,27 @@
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
   /* ================= icons ================= */
-  const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const svg = (p) => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   const I = {
+    updown: svg('<path d="M8 9l4-4 4 4M8 15l4 4 4-4"/>'),
+    search: svg('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/>'),
+    bell: svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>'),
+    panel: svg('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/>'),
+    download: svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'),
+    calendar: svg('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+    dots: svg('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>'),
+    filter: svg('<path d="M4 6h16M7 12h10M10 18h4"/>'),
+    cart: svg('<path d="M3 4h2l2.4 11h10.2L20 8H6.2"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>'),
+    dollar: svg('<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.2c-.5-1-1.6-1.6-2.8-1.6-1.6 0-2.8.9-2.8 2.1 0 2.9 5.8 1.6 5.8 4.5 0 1.2-1.3 2.2-3 2.2-1.3 0-2.5-.6-3-1.7M12 6v1.6M12 16.4V18"/>'),
+    target: svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>'),
+    percent: svg('<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="17" r="2.3"/>'),
+    video: svg('<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3"/>'),
+    image: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-9 8.5"/>'),
+    radio: svg('<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>'),
+    help: svg('<circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6.9c0 1.6-2.3 2-2.3 3.4M12 17h.01"/>'),
+    info: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>'),
+    chevL: svg('<path d="M14.5 6l-6 6 6 6"/>'),
+    chevR: svg('<path d="M9.5 6l6 6-6 6"/>'),
     logo: svg('<path d="M4 18l5-6 4 3 7-9" stroke="#fff" stroke-width="2.4"/><circle cx="20" cy="6" r="1.6" fill="#fff" stroke="none"/>'),
     home: svg('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'),
     news: svg('<path d="M4 5h12v14H6a2 2 0 0 1-2-2z"/><path d="M16 9h4v8a2 2 0 0 1-2 2"/><path d="M8 9h4M8 13h4"/>'),
@@ -43,6 +62,14 @@
     chatOpen: false,
     jobs: [],
     openJob: null,
+    homeBrand: "all",
+    homeTab: "overview",
+    chartMode: "daily",
+    tableQuery: "",
+    tableStatus: "all",
+    tableSearch: false,
+    tablePage: 1,
+    pendingVideo: null,
   };
 
   const PERMS = [
@@ -107,94 +134,126 @@
   }
   function go(route) { if (location.hash.slice(1) === route) render(); else location.hash = route; }
 
-  /* ================= navigation ================= */
-  function renderNav() {
-    const r = state.route.startsWith("brand-") ? "brands" : state.route;
-    const link = (id, icon, label, extra = "") => `<a href="#${id}" aria-current="${r === id ? "page" : "false"}">${icon}<span class="lbl">${label}</span>${extra}</a>`;
+  /* ================= sidebar + top bar ================= */
+  function navKey() { return state.route.startsWith("brand-") ? "brands" : state.route; }
+  function renderSide() {
+    const r = navKey();
+    const link = (id, icon, label, extra = "") => `<a class="nav-link" href="#${id}" aria-current="${r === id ? "page" : "false"}" title="${label}">${icon}<span class="lbl">${label}</span>${extra}</a>`;
     const fresh = D.news.filter((n) => brandOk(n.brand)).length;
-    const people = D.employees.filter((e) => e.status === "active" || e.status === "invited");
-    $("#nav").innerHTML = `
-      <div class="logo"><span class="logo-mark">${I.logo}</span><span class="logo-name">${esc(D.product || "Tracker")}</span></div>
-      <div class="nav-group">
-        <span class="eyebrow nav-label">Workspace</span>
+    const people = D.employees.filter((e) => e.status === "active");
+    const c = D.credits, pct = Math.round((c.used / c.total) * 100), u = me();
+    $("#side").innerHTML = `
+      <div class="brandmark"><span class="brandmark-ic">${I.logo}</span><b>tracker</b></div>
+      <div class="ws"><span class="ws-ic">${esc(initials(D.agency) || "A")}</span><div><b>${esc(D.agency)}</b><span>${isAdmin() ? "Admin access" : "Team access"}</span></div>${I.updown}</div>
+      <nav class="nav-group" aria-label="Workspace"><span class="eyebrow">Workspace</span>
         ${link("home", I.home, "Home")}
         ${can("news") ? link("news", I.news, "News", `<span class="count">${fresh}</span>`) : ""}
-        ${link("brands", I.brands, "Brands")}
-      </div>
-      ${isAdmin() ? `<div class="nav-group">
-        <span class="eyebrow nav-label">Admin</span>
-        ${link("employees", I.people, "Employees")}
+        ${link("brands", I.brands, "Brands", `<span class="count">${myBrands().length}</span>`)}
+      </nav>
+      ${isAdmin() ? `<nav class="nav-group" aria-label="Manage"><span class="eyebrow">Manage</span>
+        ${link("employees", I.people, "Employees", `<span class="count">${D.employees.filter((e) => e.status !== "removed").length}</span>`)}
         ${link("connections", I.plug, "Connections")}
-      </div>` : ""}
-      <div class="nav-foot">
-        <div class="viewer">
-          <label class="eyebrow" for="viewer">Viewing as</label>
-          <select id="viewer">${people.filter((e) => e.status === "active").map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title)}</option>`).join("")}</select>
-          <small>Demo only: switch people to see how permissions change the dashboard.</small>
+      </nav>` : ""}
+      <div class="side-foot">
+        ${isAdmin() || can("create") ? `<div class="usage">
+          <div class="usage-top"><span>${esc(c.label)} this month</span>${I.info}</div>
+          <div class="usage-val num">${c.used.toLocaleString("en-US")}<small>/ ${count(c.total)}</small></div>
+          <div class="track"><i style="width:${pct}%"></i></div>
+          ${isAdmin() ? '<a href="#connections">Manage credits</a>' : `<span class="sub">${100 - pct}% left</span>`}
+        </div>` : ""}
+        ${can("assistant") ? `<button class="nav-link plain-btn" data-action="help">${I.help}<span class="lbl">Help & resources</span></button>` : ""}
+        <div class="me" title="Switch person (demo)">
+          <span class="avatar">${esc(initials(u.name))}</span>
+          <div><b>${esc(u.role === "admin" ? D.agency + " admin" : u.name)}</b><span>${esc(u.role === "admin" ? "Workspace admin" : u.title)}</span></div>${I.updown}
+          <select id="viewer" aria-label="Viewing as (demo)">${people.map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title)}</option>`).join("")}</select>
         </div>
       </div>`;
   }
+  function crumbs() {
+    const r = state.route;
+    if (r.startsWith("brand-")) return ["Brands", brandById(r.slice(6))?.name || "Brand"];
+    return { home: ["Workspace", "Home"], news: ["Workspace", "News"], brands: ["Workspace", "Brands"], employees: ["Manage", "Employees"], connections: ["Manage", "Connections"] }[r];
+  }
+  function renderTop() {
+    const [section, page] = crumbs();
+    const alerts = D.news.filter((n) => brandOk(n.brand) && n.verdict === "fix").length;
+    $("#topbar").innerHTML = `
+      <button class="icon-btn" id="toggle-side" aria-label="Show or hide the sidebar">${I.panel}</button>
+      <div class="crumbs"><span class="ws-crumb">${section}</span><span class="sep">/</span><b>${esc(page)}</b></div>
+      <div class="top-right">
+        <div class="search">${I.search}<input id="search" type="search" placeholder="Search anything..." autocomplete="off" aria-label="Search brands, videos and news"><span class="kbd">⌘ K</span><div class="search-results" id="search-results" hidden></div></div>
+        <span class="synced" title="Euka ${stamp(D.lastSync.euka)} · Slack ${stamp(D.lastSync.slack)}"><span class="dot"></span><span>All data synced</span></span>
+        ${can("news") ? `<a class="icon-btn" href="#news" aria-label="News${alerts ? `: ${alerts} need action` : ""}">${I.bell}${alerts ? '<span class="badge"></span>' : ""}</a>` : ""}
+      </div>`;
+  }
+  function searchResults(q) {
+    q = q.trim().toLowerCase();
+    const box = $("#search-results");
+    if (!q) { box.hidden = true; return; }
+    const out = [];
+    myBrands().forEach((b) => { if (b.name.toLowerCase().includes(q)) out.push({ href: "#brand-" + b.id, label: b.name, kind: "Brand" }); });
+    myBrands().forEach((b) => b.ads.forEach((a) => { if ((a.title + " " + a.creator).toLowerCase().includes(q)) out.push({ href: "#brand-" + b.id, video: a.id, label: a.title, kind: "Video · " + b.name }); }));
+    if (can("news")) D.news.filter((n) => brandOk(n.brand) && n.title.toLowerCase().includes(q)).forEach((n) => out.push({ href: "#news", label: n.title, kind: "News" }));
+    box.innerHTML = out.slice(0, 8).map((o) => `<a href="${o.href}" ${o.video ? `data-open-video="${o.video}"` : ""}>${esc(o.label)}<span>${esc(o.kind)}</span></a>`).join("") || '<span class="sub" style="padding:8px">No matches.</span>';
+    box.hidden = false;
+  }
 
   /* ================= shared bits ================= */
-  function topline() {
-    return `<div class="topline">
-      <span class="source"><span class="dot"></span><b>Euka</b> synced ${stamp(D.lastSync.euka)}</span>
-      <span class="source"><span class="dot"></span><b>Slack</b> synced ${stamp(D.lastSync.slack)}</span>
-      <span class="sample" title="Every brand, number and message is a placeholder">Sample data</span>
-    </div>`;
-  }
-  function delta(cur, prev, neutral) {
-    if (!prev) return `<span class="delta flat">No prior data</span>`;
-    const pct = ((cur - prev) / prev) * 100;
+  const topline = () => "";
+  function delta(cur, prev, neutral, abs) {
+    if (!prev) return `<span class="delta flat"><b>New</b> no prior data</span>`;
+    const diff = cur - prev, pct = (diff / prev) * 100;
     const dir = Math.abs(pct) < 0.5 ? "flat" : pct > 0 ? "up" : "down";
-    const arrow = dir === "up" ? "▲" : dir === "down" ? "▼" : "•";
-    return `<span class="delta ${neutral ? "flat" : dir}">${arrow} ${Math.abs(pct).toFixed(1)}% <span>vs prior 30d</span></span>`;
+    const val = abs ? (diff >= 0 ? "+" : "−") + Math.abs(diff).toFixed(2) + "×" : (pct >= 0 ? "+" : "−") + Math.abs(pct).toFixed(1) + "%";
+    return `<span class="delta ${neutral ? "flat" : dir}"><b>${dir === "down" ? "↘" : "↗"} ${val}</b> vs. previous month</span>`;
   }
   function niceMax(v) {
     if (v <= 0) return 1;
     const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
     return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
   }
-  function lineChart(series, showSpend) {
-    const W = 700, H = 240, L = 52, R = 14, T = 12, B = 26;
-    const max = niceMax(Math.max(...series.map((d) => Math.max(d.gmv, showSpend ? d.spend : 0))));
-    const x = (i) => L + (i * (W - L - R)) / (series.length - 1);
-    const y = (v) => T + (1 - v / max) * (H - T - B);
-    const line = (k) => series.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join("");
-    const n = series.length - 1, last = series[n];
-    const ticks = [0, .25, .5, .75, 1].map((f) => f * max);
-    const xt = [0, 7, 14, 21, n];
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily GMV${showSpend ? " and ad spend" : ""}, last 30 days">
-      <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".45"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
-      ${ticks.map((t) => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="#262036" ${t ? 'stroke-dasharray="2 5"' : ""}/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${money(t)}</text>`).join("")}
-      ${xt.map((i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === n ? "end" : "middle"}">${shortDate(series[i].date)}</text>`).join("")}
-      <path d="${line("gmv")}L${x(n)},${y(0)}L${x(0)},${y(0)}Z" fill="url(#ga)"/>
-      <path d="${line("gmv")}" fill="none" stroke="#b69cff" stroke-width="2.4" stroke-linejoin="round"/>
-      ${showSpend ? `<path d="${line("spend")}" fill="none" stroke="#f472b6" stroke-width="2" stroke-linejoin="round"/><circle cx="${x(n)}" cy="${y(last.spend)}" r="4" fill="#f472b6" stroke="#0f0d16" stroke-width="2"/>` : ""}
-      <circle cx="${x(n)}" cy="${y(last.gmv)}" r="5" fill="#b69cff" stroke="#0f0d16" stroke-width="2"/>
-    </svg>`;
+  // Smooth line through points (Catmull-Rom to Bezier).
+  function smooth(pts) {
+    if (pts.length < 2) return "";
+    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += `C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  }
+  function miniSpark(vals) {
+    const W = 84, H = 30, max = Math.max(...vals), min = Math.min(...vals);
+    const pts = vals.map((v, i) => [(i * W) / (vals.length - 1), 3 + (1 - (v - min) / (max - min || 1)) * (H - 6)]);
+    const l = pts[pts.length - 1];
+    return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smooth(pts)}" fill="none" stroke="#a98bfa" stroke-width="1.6"/><circle cx="${l[0]}" cy="${l[1]}" r="2.2" fill="#a98bfa"/></svg>`;
   }
   function spark(series) {
-    const W = 300, H = 44, max = Math.max(...series.map((d) => d.gmv)), min = Math.min(...series.map((d) => d.gmv));
-    const x = (i) => (i * W) / (series.length - 1), y = (v) => 4 + (1 - (v - min) / (max - min || 1)) * (H - 8);
-    const p = series.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.gmv).toFixed(1)}`).join("");
-    const n = series.length - 1;
-    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${p}L${W},${H}L0,${H}Z" fill="rgba(139,92,246,.16)"/><path d="${p}" fill="none" stroke="#b69cff" stroke-width="1.8" vector-effect="non-scaling-stroke"/><circle cx="${x(n) - 3}" cy="${y(series[n].gmv)}" r="3" fill="#b69cff"/></svg>`;
+    const W = 300, H = 40, vals = series.map((d) => d.gmv), max = Math.max(...vals), min = Math.min(...vals);
+    const pts = vals.map((v, i) => [(i * W) / (vals.length - 1), 4 + (1 - (v - min) / (max - min || 1)) * (H - 8)]);
+    const p = smooth(pts);
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${p}L${W},${H}L0,${H}Z" fill="rgba(139,92,246,.12)"/><path d="${p}" fill="none" stroke="#a98bfa" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
   }
-  function kpiGrid(k, hero) {
-    const tiles = [];
-    if (can("results")) {
-      tiles.push(["GMV · 30 days", money(k.gmv), delta(k.gmv, k.gmvPrev), true]);
-      if (can("spend")) {
-        tiles.push(["Ad spend", money(k.spend), delta(k.spend, k.spendPrev, true)]);
-        tiles.push(["ROAS", k.roas.toFixed(2) + "×", delta(k.roas, k.roasPrev)]);
-      }
-      tiles.push(["Click-through rate", k.ctr.toFixed(2) + "%", delta(k.ctr, k.ctrPrev)]);
-      tiles.push(["Active creators", k.creators, delta(k.creators, k.creatorsPrev)]);
-      tiles.push(["Videos posted", k.videos, delta(k.videos, k.videosPrev)]);
-    }
-    if (!tiles.length) return locked("Your account can't see results. Ask an admin for the “See results” permission.");
-    return `<section class="kpis" aria-label="Key numbers">${tiles.map(([l, v, d, h]) => `<div class="kpi ${h && hero ? "hero" : ""}"><span class="eyebrow">${l}</span><span class="kpi-val">${v}</span>${d}</div>`).join("")}</section>`;
+  const weekly = (vals) => { const n = Math.max(1, Math.floor(vals.length / 7)); return Array.from({ length: Math.ceil(vals.length / n) }, (_, i) => vals.slice(i * n, i * n + n)).map((w) => w.reduce((a, b) => a + b, 0) / w.length); };
+  function kpiCards(k, series) {
+    if (!can("results")) return locked("Your account can't see results. Ask an admin for the “See results” permission.");
+    const s = can("spend"), has = series && series.length;
+    const sp = (f) => has ? miniSpark(weekly(series.map(f))) : "";
+    const cards = s ? [
+      ["GMV", moneyFull(k.gmv), delta(k.gmv, k.gmvPrev), I.cart, sp((d) => d.gmv)],
+      ["Ad spend", moneyFull(k.spend), delta(k.spend, k.spendPrev, true), I.dollar, sp((d) => d.spend)],
+      ["ROAS", k.roas.toFixed(2) + "×", delta(k.roas, k.roasPrev, false, true), I.target, sp((d) => d.gmv / (d.spend || 1))],
+      ["Videos posted", k.videos.toLocaleString("en-US"), delta(k.videos, k.videosPrev), I.video, ""],
+    ] : [
+      ["GMV", moneyFull(k.gmv), delta(k.gmv, k.gmvPrev), I.cart, sp((d) => d.gmv)],
+      ["Click-through rate", k.ctr.toFixed(2) + "%", delta(k.ctr, k.ctrPrev), I.percent, ""],
+      ["Active creators", k.creators.toLocaleString("en-US"), delta(k.creators, k.creatorsPrev), I.people, ""],
+      ["Videos posted", k.videos.toLocaleString("en-US"), delta(k.videos, k.videosPrev), I.video, ""],
+    ];
+    return `<section class="kpis" aria-label="Key numbers">${cards.map(([l, v, d, ic, spk]) => `
+      <div class="kpi"><span class="kpi-label">${l}</span><span class="kpi-ic">${ic}</span>
+        <span class="kpi-val">${v}</span><span class="kpi-spark">${spk}</span>${d}</div>`).join("")}</section>`;
   }
   function combined(brands) {
     const sum = (f) => brands.reduce((a, b) => a + f(b), 0);
@@ -203,56 +262,164 @@
       spend: sum((b) => b.kpis.spend), spendPrev: sum((b) => b.kpis.spendPrev),
       creators: sum((b) => b.kpis.creators), creatorsPrev: sum((b) => b.kpis.creatorsPrev),
       videos: sum((b) => b.kpis.videos), videosPrev: sum((b) => b.kpis.videosPrev),
+      budget: sum((b) => b.monthlyBudget || 0),
     };
     k.roas = k.spend ? k.gmv / k.spend : 0; k.roasPrev = k.spendPrev ? k.gmvPrev / k.spendPrev : 0;
-    const imp = (b) => b.kpis.ctr * b.kpis.spend;
-    k.ctr = sum(imp) / (k.spend || 1); k.ctrPrev = sum((b) => b.kpis.ctrPrev * b.kpis.spendPrev) / (k.spendPrev || 1);
-    const days = brands[0] ? brands[0].series.length : 0;
-    k.series = Array.from({ length: days }, (_, i) => ({ date: brands[0].series[i].date, gmv: sum((b) => b.series[i] ? b.series[i].gmv : 0), spend: sum((b) => b.series[i] ? b.series[i].spend : 0) }));
+    k.ctr = sum((b) => b.kpis.ctr * b.kpis.spend) / (k.spend || 1); k.ctrPrev = sum((b) => b.kpis.ctrPrev * b.kpis.spendPrev) / (k.spendPrev || 1);
+    const ref = brands.find((b) => b.series.length), days = ref ? ref.series.length : 0;
+    k.series = Array.from({ length: days }, (_, i) => ({ date: ref.series[i].date, gmv: sum((b) => b.series[i]?.gmv || 0), gmvLast: sum((b) => b.series[i]?.gmvLast || 0), spend: sum((b) => b.series[i]?.spend || 0) }));
     return k;
   }
 
   /* ================= HOME ================= */
+  function gmvChart(series) {
+    const avg = state.chartMode === "avg";
+    const roll = (key) => series.map((_, i) => { const w = series.slice(Math.max(0, i - 6), i + 1); return w.reduce((a, d) => a + d[key], 0) / w.length; });
+    const cur = avg ? roll("gmv") : series.map((d) => d.gmv), last = avg ? roll("gmvLast") : series.map((d) => d.gmvLast);
+    const W = 720, H = 300, L = 44, R = 10, T = 10, B = 26, n = series.length - 1;
+    const max = niceMax(Math.max(...cur, ...last));
+    const x = (i) => L + (i * (W - L - R)) / n, y = (v) => T + (1 - v / max) * (H - T - B);
+    const ticks = [0, 1 / 3, 2 / 3, 1].map((f) => f * max);
+    const xt = [0, 4, 9, 14, 19, 24, n].filter((v, i, a) => v <= n && a.indexOf(v) === i);
+    const lp = [x(n), y(cur[n])];
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily GMV this month compared with last month">
+      ${ticks.map((t) => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="#222229"/><text x="${L - 10}" y="${y(t) + 3.5}" text-anchor="end">${money(t)}</text>`).join("")}
+      ${xt.map((i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === n ? "end" : "middle"}">${shortDate(series[i].date)}</text>`).join("")}
+      <path d="${smooth(last.map((v, i) => [x(i), y(v)]))}" fill="none" stroke="#6b6977" stroke-width="1.5" stroke-dasharray="3 4"/>
+      <path d="${smooth(cur.map((v, i) => [x(i), y(v)]))}" fill="none" stroke="#a98bfa" stroke-width="2.2"/>
+      <circle cx="${lp[0]}" cy="${lp[1]}" r="4" fill="#a98bfa" stroke="#111116" stroke-width="2"/>
+    </svg>`;
+  }
+  function weekBars(series) {
+    const weeks = [[0, 6], [7, 13], [14, 20], [21, series.length - 1]].filter(([a]) => a < series.length);
+    const vals = weeks.map(([a, b]) => series.slice(a, b + 1).reduce((s, d) => s + d.gmv, 0));
+    const W = 400, H = 210, T = 22, B = 26, max = niceMax(Math.max(...vals)) , gap = 22, bw = (W - gap * (vals.length + 1)) / vals.length;
+    const day = (i) => new Date(series[i].date + "T00:00:00");
+    const lab = ([a, b]) => `${day(a).toLocaleDateString("en-US", { month: "short" })} ${day(a).getDate()}–${day(b).getDate()}`;
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="GMV per week">
+      ${vals.map((v, i) => { const h = (v / max) * (H - T - B), xx = gap + i * (bw + gap), yy = H - B - h, last = i === vals.length - 1;
+        return `<rect x="${xx}" y="${yy}" width="${bw}" height="${h}" rx="4" fill="${last ? "#a98bfa" : "#6a45c2"}"/>
+          <text x="${xx + bw / 2}" y="${yy - 7}" text-anchor="middle" style="fill:#9b99a8">${money(v)}</text>
+          <text x="${xx + bw / 2}" y="${H - 7}" text-anchor="middle">${lab(weeks[i])}</text>`; }).join("")}
+    </svg>`;
+  }
+  function homeRows(brands) {
+    const q = state.tableQuery.trim().toLowerCase();
+    return brands.flatMap((b) => b.ads.map((a) => ({ a, b })))
+      .filter(({ a, b }) => (state.tableStatus === "all" || a.status === state.tableStatus) && (!q || (a.title + " " + a.creator + " " + b.name).toLowerCase().includes(q)))
+      .sort((x, z) => z.a.gmv - x.a.gmv || z.a.launched.localeCompare(x.a.launched));
+  }
+  function videoTable(brands) {
+    const rows = homeRows(brands), per = 5, pages = Math.max(1, Math.ceil(rows.length / per));
+    state.tablePage = Math.min(state.tablePage, pages);
+    const page = rows.slice((state.tablePage - 1) * per, state.tablePage * per), s = can("spend");
+    const icon = (a) => /carousel/i.test(a.format) ? I.image : /live/i.test(a.format) ? I.radio : I.video;
+    return `
+      <div class="table-head">
+        <div><h2>Video performance</h2><span class="pill plain">${rows.length} video${rows.length === 1 ? "" : "s"}</span></div>
+        <div>
+          ${state.tableSearch ? `<input class="table-search" id="table-q" placeholder="Search videos" value="${esc(state.tableQuery)}" aria-label="Search videos">` : ""}
+          <button class="icon-btn" data-action="table-search" aria-label="Search videos">${I.search}</button>
+          <label class="field-btn" style="padding:5px 8px">${I.filter}<select id="table-status" aria-label="Filter by status" style="background:none;border:0;color:inherit;font-size:12.5px">
+            ${[["all", "Filter"], ["live", "Live"], ["paused", "Paused"], ["review", "In review"], ["ended", "Ended"]].map(([v, l]) => `<option value="${v}" ${state.tableStatus === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th style="width:34px"><input type="checkbox" aria-label="Select all"></th><th>Video</th><th>Status</th>${s ? '<th class="r">Spend</th>' : ""}<th class="r">Views</th><th class="r">GMV ↓</th><th class="r">CTR</th>${s ? '<th class="r">ROAS</th>' : ""}<th style="width:36px"></th></tr></thead>
+        <tbody>${page.map(({ a, b }) => `<tr class="clickable" data-video="${a.id}" data-brand="${b.id}">
+          <td><input type="checkbox" aria-label="Select ${esc(a.title)}"></td>
+          <td><div class="cell-main"><span class="cell-ic">${icon(a)}</span><div><b>${esc(a.title)}</b><span>${esc(b.name)} · ${esc(a.creator)}</span></div></div></td>
+          <td><span class="status ${a.status}">${VSTATUS[a.status]}</span></td>
+          ${s ? `<td class="r">${a.spend ? moneyFull(a.spend) : "–"}</td>` : ""}
+          <td class="r">${a.impressions ? a.impressions.toLocaleString("en-US") : "–"}</td>
+          <td class="r"><b style="font-weight:600">${a.gmv ? moneyFull(a.gmv) : "–"}</b></td>
+          <td class="r">${a.ctr ? a.ctr.toFixed(2) + "%" : "–"}</td>
+          ${s ? `<td class="r" style="color:${a.roas >= 4 ? "var(--purple-hi)" : "inherit"}">${a.roas ? a.roas.toFixed(1) + "×" : "–"}</td>` : ""}
+          <td class="r" style="color:var(--dim)">${I.dots}</td></tr>`).join("") || `<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">No videos match.</td></tr>`}</tbody>
+      </table></div>
+      <div class="table-foot"><span>Showing ${page.length} of ${rows.length} videos</span>
+        <div class="pager"><button class="icon-btn" data-page="prev" aria-label="Previous page" ${state.tablePage <= 1 ? "disabled" : ""}>${I.chevL}</button><span class="num">${state.tablePage} / ${pages}</span><button class="icon-btn" data-page="next" aria-label="Next page" ${state.tablePage >= pages ? "disabled" : ""}>${I.chevR}</button></div></div>`;
+  }
+  function homeBrands() {
+    const all = myBrands().filter((b) => b.series && b.series.length);
+    if (state.homeBrand !== "all" && !all.some((b) => b.id === state.homeBrand)) state.homeBrand = "all";
+    return { all, brands: state.homeBrand === "all" ? all : all.filter((b) => b.id === state.homeBrand) };
+  }
   function viewHome() {
-    const brands = myBrands().filter((b) => b.series && b.series.length);
-    const scope = isAdmin() || me().brands === "all" ? "every brand" : `your ${brands.length} brand${brands.length === 1 ? "" : "s"}`;
-    if (!brands.length) return `${topline()}<div class="page-head"><div><span class="eyebrow">Home</span><h1>Welcome, ${esc(me().name.split(" ")[0])}</h1></div></div><div class="empty">No brands are assigned to you yet. Ask an admin to give you access.</div>`;
-    const k = combined(brands);
-    const live = brands.reduce((a, b) => a + b.ads.filter((x) => x.status === "live").length, 0);
+    const { all, brands } = homeBrands();
+    const head = (sub) => `<div class="page-head"><div><h1>Agency overview</h1><p>${sub}</p></div>
+      <div class="head-actions">${can("results") ? `<button class="btn" data-action="export">${I.download} Export report</button>` : ""}${can("create") ? `<button class="btn primary" data-action="new-video">${I.plus} New video</button>` : ""}</div></div>`;
+    if (!all.length) return head("No brands are assigned to you yet.") + '<div class="empty">Ask an admin to give you access to a brand.</div>';
+    const k = combined(brands), r = can("results"), s = can("spend");
+    const ser = k.series, first = new Date(ser[0].date + "T00:00:00"), last = new Date(ser[ser.length - 1].date + "T00:00:00");
+    const range = `${first.toLocaleDateString("en-US", { month: "short" })} ${first.getDate()} – ${last.getDate()}, ${last.getFullYear()}`;
+    const monthName = first.toLocaleDateString("en-US", { month: "long" });
+    const prevMonth = new Date(first.getFullYear(), first.getMonth() - 1, 1).toLocaleDateString("en-US", { month: "long" });
+    const up = ((k.gmv - k.gmvPrev) / k.gmvPrev) * 100;
+    const scope = state.homeBrand === "all" ? (isAdmin() || me().brands === "all" ? "all brands" : `your ${all.length} brands`) : brands[0].name;
     const total = brands.reduce((a, b) => a + b.kpis.gmv, 0);
+    const single = brands.length === 1;
+    const rankRows = single
+      ? brands[0].products.map((p) => [p.name, p.gmv, p.share])
+      : [...brands].sort((a, z) => z.kpis.gmv - a.kpis.gmv).map((b) => [b.name, b.kpis.gmv, Math.round((b.kpis.gmv / total) * 100)]);
     const lastNews = (id) => D.news.filter((n) => n.brand === id).sort((a, z) => z.time.localeCompare(a.time))[0];
     return `
-      ${topline()}
-      <div class="page-head">
-        <div><span class="eyebrow">Home · last 30 days</span><h1>All brands at a glance</h1><p>Combined results for ${scope}. Scroll down for each brand on its own.</p></div>
-        <div class="chips"><span class="pill purple">${brands.length} brands</span><span class="pill good">${live} live videos</span></div>
+      ${head(`Your brands, videos and results. All in one tracker.`)}
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Jump to section">
+          ${[["overview", "Overview"], ["videos", "Videos"], ["brand-by-brand", "Brand by brand"]].map(([v, l]) => `<button class="chip" data-jump="${v}" aria-pressed="${state.homeTab === v}">${l}</button>`).join("")}
+        </div>
+        <div class="toolbar-right">
+          <select class="select" id="home-brand" aria-label="Brands shown">
+            <option value="all">All brands</option>${all.map((b) => `<option value="${b.id}" ${state.homeBrand === b.id ? "selected" : ""}>${esc(b.name)}</option>`).join("")}
+          </select>
+          <span class="field-btn">${I.calendar}<span class="num">${range}</span></span>
+        </div>
       </div>
-      ${kpiGrid(k, true)}
-      ${can("results") ? `
+      <div id="overview" style="scroll-margin-top:70px;display:flex;flex-direction:column;gap:16px">
+      ${kpiCards(k, ser)}
+      ${r ? `
       <div class="grid-2">
         <section class="card">
-          <div class="section-head"><h2>Combined GMV${can("spend") ? " and ad spend" : ""}</h2>
-            <div class="legend"><span><i style="background:#b69cff"></i>GMV</span>${can("spend") ? '<span><i style="background:#f472b6"></i>Ad spend</span>' : ""}</div></div>
-          <div class="chart">${lineChart(k.series, can("spend"))}</div>
+          <div class="card-head">
+            <div><h2>GMV overview</h2><span class="sub">Daily GMV across ${esc(scope)}</span></div>
+            <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+              <div class="legend"><span><i style="background:#a98bfa"></i>This month</span><span><i style="background:#6b6977"></i>Last month</span></div>
+              <select class="select" id="chart-mode" aria-label="Chart detail" style="padding:4px 8px">
+                <option value="daily" ${state.chartMode !== "avg" ? "selected" : ""}>Daily</option><option value="avg" ${state.chartMode === "avg" ? "selected" : ""}>7-day average</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart">${gmvChart(ser)}</div>
+          <div class="sub" style="display:flex;gap:6px;align-items:center;color:var(--purple-hi)">${up >= 0 ? "↗" : "↘"} <span style="color:var(--muted)">GMV is ${up >= 0 ? "up" : "down"} ${Math.abs(up).toFixed(1)}% compared to ${prevMonth}.</span></div>
         </section>
         <section class="card">
-          <div class="section-head"><h2>Share of GMV</h2><span class="eyebrow num">${money(total)}</span></div>
-          <div class="share">${brands.map((b, i) => `<i style="width:${(b.kpis.gmv / total) * 100}%;background:${BRAND_COLORS[i % BRAND_COLORS.length]}" title="${esc(b.name)}"></i>`).join("")}</div>
-          <div class="share-legend">${brands.map((b, i) => `<div><i style="background:${BRAND_COLORS[i % BRAND_COLORS.length]}"></i><span>${esc(b.name)}</span><b class="num">${Math.round((b.kpis.gmv / total) * 100)}%</b></div>`).join("")}</div>
-          <div class="section-head" style="margin-top:6px"><h3>Needs a look</h3></div>
-          <div class="side-list">${brands.filter((b) => b.status !== "on-track").map((b) => `<div><span style="display:flex;gap:8px;align-items:center;min-width:0"><span class="sdot s-${b.status}"></span><a href="#brand-${b.id}">${esc(b.name)}</a></span><span class="muted" style="font-size:12.5px;text-align:right">${esc(b.statusNote)}</span></div>`).join("") || '<span class="muted">Every brand is on track.</span>'}</div>
+          <div class="card-head"><div><h2>Weekly GMV</h2><span class="sub">GMV per week in ${monthName}</span></div></div>
+          <div class="big-val"><strong>${moneyFull(k.gmv)}</strong>${delta(k.gmv, k.gmvPrev)}</div>
+          <div class="chart">${weekBars(ser)}</div>
+          <div class="foot-note">${s && k.budget ? `<span>Monthly ad budget: ${moneyFull(k.budget)}</span><b>${Math.round((k.spend / k.budget) * 100)}% used</b>` : `<span>${brands.reduce((a, b) => a + b.ads.filter((x) => x.status === "live").length, 0)} videos live now</span><b>${brands.length} brand${brands.length === 1 ? "" : "s"}</b>`}</div>
         </section>
       </div>` : ""}
-      <div class="section-head"><h2>Brand by brand</h2><a class="btn sm" href="#brands">Open Brands</a></div>
+      </div>
+      ${r ? `
+      <div class="grid-2 wide-right" id="videos" style="scroll-margin-top:70px">
+        <section class="card">
+          <div class="card-head"><div><h2>${single ? "Top products" : "Top brands"}</h2><span class="sub">${single ? "What sells for " + esc(brands[0].name) : "Where your GMV comes from"}</span></div></div>
+          <div class="rank">${rankRows.map(([n, v, p]) => `<div class="rank-row"><span>${esc(n)}</span><b>${moneyFull(v)}</b><small>${p}%</small><div class="track"><i style="width:${p}%"></i></div></div>`).join("")}</div>
+          <a href="#brands" style="margin-top:auto;font-size:12.5px;display:flex;justify-content:space-between;align-items:center">View all brands <span aria-hidden="true">↗</span></a>
+        </section>
+        <section class="card flush" id="vt">${videoTable(brands)}</section>
+      </div>` : ""}
+      <div class="section-head" id="brand-by-brand" style="scroll-margin-top:70px;margin-top:8px"><div><h2>Brand by brand</h2><span class="sub">Each brand's results for the last 30 days</span></div><a class="btn sm" href="#brands">Open Brands</a></div>
       <div class="brand-results">${brands.map((b) => {
         const n = lastNews(b.id); const [st, tone] = STATUS[b.status];
         return `<article class="br">
           <div class="br-head"><span class="mono" style="${monoBg(b.name)}">${esc(initials(b.name))}</span>
-            <div><div class="br-name">${esc(b.name)}</div><div class="muted" style="font-size:12.5px">${esc(b.category)} · ${esc(b.lead)}</div></div>
+            <div><div class="br-name">${esc(b.name)}</div><div class="sub">${esc(b.category)} · ${esc(b.lead)}</div></div>
             <span class="pill ${tone}">${st}</span></div>
-          ${can("results") ? `<div class="br-stats" style="grid-template-columns:repeat(${can("spend") ? 4 : 2},minmax(0,1fr))">
+          ${r ? `<div class="br-stats" style="grid-template-columns:repeat(${s ? 4 : 2},minmax(0,1fr))">
             <div><b>${money(b.kpis.gmv)}</b><span>GMV</span></div>
-            ${can("spend") ? `<div><b>${b.kpis.roas.toFixed(1)}×</b><span>ROAS</span></div><div><b>${money(b.kpis.spend)}</b><span>Spend</span></div>` : ""}
+            ${s ? `<div><b>${b.kpis.roas.toFixed(1)}×</b><span>ROAS</span></div><div><b>${money(b.kpis.spend)}</b><span>Spend</span></div>` : ""}
             <div><b>${b.ads.filter((a) => a.status === "live").length}</b><span>Live</span></div>
           </div>
           <div class="spark">${spark(b.series)}</div>
@@ -261,6 +428,23 @@
           <a class="btn sm" href="#brand-${b.id}" style="align-self:flex-start">Open ${esc(b.name)}</a>
         </article>`;
       }).join("")}</div>`;
+  }
+  function exportReport() {
+    const { brands } = homeBrands(), s = can("spend");
+    const rows = [["Brand", "Status", "GMV (30d)", ...(s ? ["Ad spend", "ROAS"] : []), "CTR %", "Creators", "Videos"]]
+      .concat(brands.map((b) => [b.name, STATUS[b.status][0], b.kpis.gmv, ...(s ? [b.kpis.spend, b.kpis.roas] : []), b.kpis.ctr, b.kpis.creators, b.kpis.videos]));
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    try {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "tracker-report.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      toast("Report exported as tracker-report.csv");
+    } catch (_) { toast("Export works in the installed version."); }
+  }
+  function pickBrandForVideo() {
+    openModal(`
+      <div class="modal-head"><div><h2>New video</h2><p>Which brand is this video for?</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="pick-list">${myBrands().map((b) => `<button class="pick" data-pick-brand="${b.id}"><span class="mono" style="${monoBg(b.name)}">${esc(initials(b.name))}</span><div><b style="font-weight:600">${esc(b.name)}</b><div class="sub">${esc(b.category)}</div></div>${I.chevR}</button>`).join("")}</div>`);
   }
 
   /* ================= NEWS ================= */
@@ -286,13 +470,13 @@
           ${myBrands().map((b) => `<option value="${b.id}" ${state.newsBrand === b.id ? "selected" : ""}>${esc(b.name)}</option>`).join("")}
         </select>
       </div>
-      <div class="grid-2">
+      <div class="grid-2 top">
         <section class="feed" aria-label="News feed">
           ${list.length ? Object.entries(days).map(([d, items]) => `
             <div class="day">${new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</div>
             ${items.map(newsPost).join("")}`).join("") : '<div class="empty">No posts match these filters.</div>'}
         </section>
-        <aside class="card" style="position:sticky;top:20px">
+        <aside class="card" style="position:sticky;top:72px">
           <h2>At a glance</h2>
           <div class="side-list">${verdicts.map(([v, c]) => `<div><span class="pill ${VERDICT[v][1]}">${VERDICT[v][0]}</span><b class="num">${c}</b></div>`).join("")}</div>
           <div class="section-head" style="margin-top:4px"><h3>Listening to</h3></div>
@@ -363,7 +547,7 @@
           <span class="pill ${tone}"><span class="sdot s-${b.status}"></span>${st} · ${esc(b.statusNote)}</span>
         </div>
       </section>
-      ${b.series && b.series.length ? kpiGrid(b.kpis, false) : '<div class="callout">Waiting for the first Euka sync. Results and videos appear here once this brand\'s data comes in.</div>'}
+      ${b.series && b.series.length ? kpiCards(b.kpis, b.series) : '<div class="callout">Waiting for the first Euka sync. Results and videos appear here once this brand\'s data comes in.</div>'}
       <section class="card">
         <div class="section-head">
           <div style="display:flex;flex-direction:column;gap:4px"><h2>Videos running</h2><span class="muted" style="font-size:13px">Pulled from Euka. Click a video for its full specs.</span></div>
@@ -374,7 +558,7 @@
         </div>
         ${vids.length ? `<div class="videos">${vids.map((a) => videoCard(a)).join("")}</div>` : `<div class="empty">No ${state.videoFilter === "all" ? "" : VSTATUS[state.videoFilter].toLowerCase() + " "}videos for ${esc(b.name)} yet.</div>`}
       </section>
-      <div class="grid-2">
+      <div class="grid-2 top">
         <section class="card">
           <div class="section-head"><h2>Video requests</h2><span class="muted" style="font-size:13px">Agent pipeline progress</span></div>
           <div class="requests" id="requests">${requestsList(b.id)}</div>
@@ -389,7 +573,7 @@
   function thumb(a) {
     const len = a.duration ? `0:${String(a.duration).padStart(2, "0")}` : "Carousel";
     return `<div class="thumb" style="${thumbBg(a.hue)}">
-      <div class="thumb-top"><span class="pill v-${a.status}">${VSTATUS[a.status]}</span><span class="tag">${len}</span></div>
+      <div class="thumb-top"><span class="v-pill v-${a.status}">${VSTATUS[a.status]}</span><span class="tag">${len}</span></div>
       ${a.duration ? '<span class="play" aria-hidden="true"></span>' : ""}
       <div class="thumb-hook">${esc(a.hook)}</div></div>`;
   }
@@ -410,8 +594,8 @@
 
   /* ================= video specs drawer ================= */
   let lastFocus = null;
-  function openVideo(id) {
-    const b = brandById(state.route.slice(6)); const a = b && b.ads.find((x) => x.id === id);
+  function openVideo(id, brandId) {
+    const b = brandById(brandId || state.route.slice(6)); const a = b && b.ads.find((x) => x.id === id);
     if (!a) return;
     lastFocus = document.activeElement;
     const r = can("results"), s = can("spend"), pending = !a.impressions;
@@ -445,7 +629,7 @@
         <div><span class="eyebrow">Admin · Employees</span><h1>Employees</h1><p>Add people, decide exactly what each person can see and do, or remove them. Nobody gets in until you set their permissions.</p></div>
         <button class="btn primary" data-action="add-employee">${I.plus} Add employee</button>
       </div>
-      <div class="table-wrap"><table>
+      <div class="table-wrap boxed"><table>
         <thead><tr><th>Person</th><th>Brands</th><th>Permissions</th><th>Status</th><th></th></tr></thead>
         <tbody>${list.map((e) => `<tr>
           <td><div class="person"><span class="avatar">${esc(initials(e.name))}</span><div><b style="font-weight:600">${esc(e.name)}</b><div class="muted" style="font-size:12.5px">${esc(e.title)} · ${esc(e.email)}</div></div></div></td>
@@ -471,7 +655,7 @@
       <div class="page-head"><div><span class="eyebrow">Admin · Connections</span><h1>Connections</h1><p>Connected once by an admin and shared by everyone, so employees never log in to these services or see the passwords.</p></div></div>
       <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Off</span>'}</div><p>${d}</p></div>`).join("")}</div>
       <div class="section-head"><h2>Social accounts for posting</h2></div>
-      <div class="table-wrap"><table>
+      <div class="table-wrap boxed"><table>
         <thead><tr><th>Brand</th><th>Platform</th><th>Account</th><th>Status</th><th></th></tr></thead>
         <tbody>${D.brands.flatMap((b) => (D.accounts[b.id] || []).map((a, i) => `<tr>
           <td>${esc(b.name)}</td><td>${esc(a.platform)}</td><td class="muted">${esc(a.handle)}</td>
@@ -753,6 +937,7 @@
     const r = can("results"), s = can("spend");
     const brand = D.brands.find((b) => t.includes(b.name.toLowerCase()) || t.includes(b.name.toLowerCase().split(" ")[0]));
     if (brand && !brandOk(brand.id)) return `You don't have access to **${brand.name}**. An admin can add it to your brands.`;
+    if (/how do i use|help|what is tracker|how does tracker/.test(t)) return `Tracker has these areas:\n• **Home**: combined results for ${isAdmin() || me().brands === "all" ? "all brands" : "your brands"}, then each brand below.\n${can("news") ? "• **News**: results and updates from Slack, with an evaluation for each.\n" : ""}• **Brands**: open a brand to see its running videos and their specs.${can("create") ? " Press **Post more** to have the agents make a new video." : ""}\n${isAdmin() ? "• **Employees** and **Connections**: manage people, permissions and accounts.\n" : ""}Use the search bar (⌘K) to jump to any brand or video.`;
     if (/^(hi|hello|hey)\b/.test(t)) return `Hi ${me().name.split(" ")[0]}! Ask me about any of your brands, today's news, or how to use Tracker.`;
     if (/permission|access|what can i|my role/.test(t)) {
       if (isAdmin()) return "You're an **admin**: you can see everything, add brands, connect accounts and manage employees.";
@@ -820,27 +1005,69 @@
   function render() {
     state.route = parseRoute();
     if (!allowed(state.route)) { location.hash = "home"; return; }
-    renderNav();
+    renderSide();
+    renderTop();
     const r = state.route;
     $("#work").innerHTML = r === "news" ? viewNews() : r === "brands" ? viewBrands() : r === "employees" ? viewEmployees() : r === "connections" ? viewConnections() : r.startsWith("brand-") ? viewBrand(r.slice(6)) : viewHome();
     const b = r.startsWith("brand-") && brandById(r.slice(6));
     document.title = (b ? b.name : { home: "Home", news: "News", brands: "Brands", employees: "Employees", connections: "Connections" }[r]) + " · Tracker";
     renderAssistant();
+    if (state.pendingVideo && r.startsWith("brand-")) { const v = state.pendingVideo; state.pendingVideo = null; openVideo(v); }
   }
 
-  window.addEventListener("hashchange", () => { state.videoFilter = "all"; closeOverlays(); render(); window.scrollTo({ top: 0 }); });
+  function setNavOpen(open) { document.body.classList.toggle("nav-open", open); $("#nav-scrim").hidden = !open; }
+  function refreshTable() {
+    const vt = $("#vt"); if (!vt) return;
+    vt.innerHTML = videoTable(homeBrands().brands);
+    const q = $("#table-q"); if (q && state.tableSearch) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+  try { if (localStorage.getItem("tracker-collapsed") === "1") document.body.classList.add("collapsed"); } catch (_) {}
+
+  window.addEventListener("hashchange", () => { state.videoFilter = "all"; state.tablePage = 1; setNavOpen(false); closeOverlays(); render(); window.scrollTo({ top: 0 }); });
   document.addEventListener("change", (e) => {
-    if (e.target.id === "viewer") { state.user = e.target.value; state.chat = []; render(); toast(`Now viewing as ${me().name}.`); }
-    if (e.target.id === "news-brand") { state.newsBrand = e.target.value; render(); }
+    const id = e.target.id;
+    if (id === "viewer") { state.user = e.target.value; state.chat = []; state.homeBrand = "all"; render(); toast(`Now viewing as ${me().name}.`); }
+    if (id === "news-brand") { state.newsBrand = e.target.value; render(); }
+    if (id === "home-brand") { state.homeBrand = e.target.value; state.tablePage = 1; render(); }
+    if (id === "chart-mode") { state.chartMode = e.target.value; render(); }
+    if (id === "table-status") { state.tableStatus = e.target.value; state.tablePage = 1; refreshTable(); }
     if (e.target.name === "brand-all") $$("[name=brand]").forEach((i) => (i.checked = e.target.checked));
     if (e.target.name === "brand" && !e.target.checked) { const a = $("[name=brand-all]"); if (a) a.checked = false; }
   });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "search") searchResults(e.target.value);
+    if (e.target.id === "table-q") { state.tableQuery = e.target.value; state.tablePage = 1; refreshTable(); }
+  });
+  document.addEventListener("focusout", (e) => {
+    if (e.target.id === "search") setTimeout(() => { const box = $("#search-results"); if (box && !box.contains(document.activeElement)) box.hidden = true; }, 150);
+  });
   document.addEventListener("click", (e) => {
+    const sv = e.target.closest("[data-open-video]");
+    if (sv) state.pendingVideo = sv.dataset.openVideo;
+    const sr = e.target.closest("#search-results a");
+    if (sr) { $("#search-results").hidden = true; if (location.hash === sr.getAttribute("href")) { e.preventDefault(); render(); } return; }
+    const row = e.target.closest("tr[data-video]");
+    if (row && !e.target.closest("input")) return openVideo(row.dataset.video, row.dataset.brand);
     const t = e.target.closest("button, [data-close]"); if (!t) return;
-    if (t.matches("[data-close]") || t.id === "scrim") return closeOverlays();
+    if (t.matches("[data-close]")) return closeOverlays();
+    if (t.id === "toggle-side") {
+      if (window.matchMedia("(max-width: 900px)").matches) return setNavOpen(!document.body.classList.contains("nav-open"));
+      const c = document.body.classList.toggle("collapsed");
+      try { localStorage.setItem("tracker-collapsed", c ? "1" : "0"); } catch (_) {}
+      return;
+    }
+    if (t.dataset.jump) {
+      state.homeTab = t.dataset.jump;
+      $$("[data-jump]").forEach((c) => c.setAttribute("aria-pressed", c === t));
+      const el = document.getElementById(t.dataset.jump);
+      if (el) el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      return;
+    }
+    if (t.dataset.page) { state.tablePage += t.dataset.page === "next" ? 1 : -1; return refreshTable(); }
+    if (t.dataset.pickBrand) return postMore(t.dataset.pickBrand);
     if (t.dataset.newsType) { state.newsType = t.dataset.newsType; return render(); }
     if (t.dataset.vfilter) { state.videoFilter = t.dataset.vfilter; return render(); }
-    if (t.dataset.video) return openVideo(t.dataset.video);
+    if (t.dataset.video) return openVideo(t.dataset.video, t.dataset.brand);
     if (t.dataset.job) return openJob(t.dataset.job);
     if (t.dataset.jobAct) return jobAction(t.dataset.jobAct);
     if (t.dataset.ask) return ask(t.dataset.ask);
@@ -853,13 +1080,22 @@
     else if (act === "remove-emp") removeEmp(t.dataset.emp);
     else if (act === "add-brand") addBrand();
     else if (act === "post-more") postMore(t.dataset.brand, t.dataset.ref);
+    else if (act === "new-video") pickBrandForVideo();
+    else if (act === "export") exportReport();
+    else if (act === "help") { setNavOpen(false); ask("How do I use Tracker?"); }
+    else if (act === "table-search") { state.tableSearch = !state.tableSearch; if (!state.tableSearch) state.tableQuery = ""; refreshTable(); }
     else if (act === "toggle-acct") { const a = D.accounts[t.dataset.brand][+t.dataset.i]; a.connected = !a.connected; render(); toast(`${a.platform} ${a.handle} ${a.connected ? "connected" : "disconnected"} (demo).`); }
   });
   $("#scrim").addEventListener("click", closeOverlays);
+  $("#nav-scrim").addEventListener("click", () => setNavOpen(false));
   document.addEventListener("submit", (e) => { if (e.target.id === "as-form") { e.preventDefault(); const i = $("#as-input"); const q = i.value; i.value = ""; ask(q); } });
   document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); const s = $("#search"); if (s) s.focus(); return; }
+    if (e.key === "Enter" && e.target.id === "search") { const f = $("#search-results a"); if (f) { e.preventDefault(); f.click(); } return; }
     if (e.key !== "Escape") return;
-    if (!$("#modal").hidden || !$("#drawer").hidden) closeOverlays();
+    if (e.target.id === "search") { e.target.value = ""; $("#search-results").hidden = true; return; }
+    if (document.body.classList.contains("nav-open")) setNavOpen(false);
+    else if (!$("#modal").hidden || !$("#drawer").hidden) closeOverlays();
     else if (state.chatOpen) { state.chatOpen = false; renderAssistant(); }
   });
 

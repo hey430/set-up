@@ -35,7 +35,7 @@ python3 -m http.server 8080 --directory dashboard
 
 | File | What it is |
 | --- | --- |
-| `dashboard/index.html` | Layout and styling (black and purple theme) |
+| `dashboard/index.html` | Layout and styling: black and purple theme, sidebar layout from the agency reference design, Inter font. Change the font in one place: `--font` at the top of the styles |
 | `dashboard/app.js` | All screens and behaviour. Places where live services plug in are marked `LIVE:` |
 | `dashboard/data.js` | Sample brands, videos, news, employees and accounts |
 | `scripts/build-preview.py` | Builds a single-file copy for sharing as a web preview |

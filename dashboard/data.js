@@ -26,9 +26,11 @@
       const t = (29 - i) / 29;
       const lift = 1 + trend * t;
       const weekend = d.getDay() === 0 || d.getDay() === 6 ? 1.18 : 1;
+      const gmv = Math.round(gmvBase * lift * weekend * (0.82 + r() * 0.36));
       out.push({
         date: d.toISOString().slice(0, 10),
-        gmv: Math.round(gmvBase * lift * weekend * (0.82 + r() * 0.36)),
+        gmv,
+        gmvLast: Math.round(gmv * (1 - trend * 0.6) * (0.78 + r() * 0.2)), // same day, previous month
         spend: Math.round(spendBase * (0.9 + t * 0.2) * (0.85 + r() * 0.3)),
       });
     }
@@ -39,6 +41,7 @@
     agency: "Your Agency",
     product: "Tracker",
     lastSync: { euka: "2026-10-31T09:42:00", slack: "2026-10-31T09:45:00" },
+    credits: { label: "Higgsfield credits", used: 8245, total: 10000 },
 
     brands: [
       {
