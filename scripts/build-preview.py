@@ -9,7 +9,7 @@ app = (root / "app.js").read_text()
 
 head = html.split("<!--PAGE-START-->")[1].split("<!--HEAD-END-->")[0]
 body = html.split("<!--BODY-START-->")[1].split("<!--BODY-END-->")[0]
-body = body.replace('<script src="data.js"></script>', "<script>\n" + data + "\n</script>")
+body = body.replace('<script src="data.js"></script>', "<script>\nwindow.TRACKER_PREVIEW = true;\n" + data + "\n</script>")
 body = body.replace('<script src="app.js"></script>', "<script>\n" + app + "\n</script>")
 
 out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "preview.html")

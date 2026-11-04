@@ -434,6 +434,7 @@
     const rows = [["Brand", "Status", "GMV (30d)", ...(s ? ["Ad spend", "ROAS"] : []), "CTR %", "Creators", "Videos"]]
       .concat(brands.map((b) => [b.name, STATUS[b.status][0], b.kpis.gmv, ...(s ? [b.kpis.spend, b.kpis.roas] : []), b.kpis.ctr, b.kpis.creators, b.kpis.videos]));
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    if (window.TRACKER_PREVIEW) return toast("Export downloads a CSV in the installed version. The web preview can't save files.");
     try {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = "tracker-report.csv";
