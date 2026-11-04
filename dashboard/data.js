@@ -37,6 +37,7 @@
 
   window.DASHBOARD_DATA = {
     agency: "Your Agency",
+    product: "Tracker",
     lastSync: { euka: "2026-10-31T09:42:00", slack: "2026-10-31T09:45:00" },
 
     brands: [
@@ -203,6 +204,45 @@
           { channel: "#client-marigold", author: "Marco R.", time: "2026-10-30T15:30:00", text: "7 creators haven't posted since samples arrived. Sending reminders through Euka today." },
         ],
       },
+    ],
+
+    // Social accounts each brand can post to. Only an admin connects these
+    // (OAuth in the full version), so employees never handle passwords.
+    accounts: {
+      "lumora-skin": [ { platform: "TikTok", handle: "@lumoraskin", connected: true }, { platform: "Instagram", handle: "@lumora.skin", connected: true }, { platform: "YouTube Shorts", handle: "Lumora Skin", connected: false } ],
+      "fernhollow-coffee": [ { platform: "TikTok", handle: "@fernhollowcoffee", connected: true }, { platform: "Instagram", handle: "@fernhollow", connected: false } ],
+      "pawsome-pantry": [ { platform: "TikTok", handle: "@pawsomepantry", connected: true }, { platform: "Instagram", handle: "@pawsome.pantry", connected: true }, { platform: "Facebook", handle: "Pawsome Pantry", connected: true } ],
+      "tidewell-hydration": [ { platform: "TikTok", handle: "@tidewell", connected: true } ],
+      "ridgeline-active": [ { platform: "TikTok", handle: "@ridgelineactive", connected: true }, { platform: "Instagram", handle: "@ridgeline.active", connected: true }, { platform: "YouTube Shorts", handle: "Ridgeline Active", connected: true } ],
+      "marigold-home": [ { platform: "TikTok", handle: "@marigoldhome", connected: false }, { platform: "Instagram", handle: "@marigold.home", connected: true } ],
+    },
+
+    // Team members. "admin" can do everything; everyone else only gets the
+    // brands and permissions the admin granted when adding them.
+    employees: [
+      { id: "admin", name: "Agency Admin", title: "Owner", email: "admin@youragency.com", role: "admin", status: "active", brands: "all", perms: [] },
+      { id: "priya", name: "Priya N.", title: "Account lead", email: "priya@youragency.com", role: "employee", status: "active", brands: ["lumora-skin", "tidewell-hydration"], perms: ["results", "spend", "news", "create", "approve", "assistant"] },
+      { id: "marco", name: "Marco R.", title: "Account lead", email: "marco@youragency.com", role: "employee", status: "active", brands: ["fernhollow-coffee", "marigold-home"], perms: ["results", "spend", "news", "create", "approve", "assistant"] },
+      { id: "dana", name: "Dana K.", title: "Account lead", email: "dana@youragency.com", role: "employee", status: "active", brands: ["pawsome-pantry", "ridgeline-active"], perms: ["results", "spend", "news", "create", "approve", "assistant"] },
+      { id: "sara", name: "Sara M.", title: "Content editor", email: "sara@youragency.com", role: "employee", status: "active", brands: ["lumora-skin", "pawsome-pantry", "ridgeline-active"], perms: ["results", "news", "create", "assistant"] },
+      { id: "jay", name: "Jay T.", title: "Intern", email: "jay@youragency.com", role: "employee", status: "invited", brands: ["lumora-skin"], perms: ["news", "assistant"] },
+    ],
+
+    // Posts the News agent writes after reading Slack and Euka.
+    // verdict: scale | watch | fix | info
+    news: [
+      { id: "n1", brand: "lumora-skin", type: "result", time: "2026-10-31T09:20:00", channel: "#client-lumora", title: "Serum Spark Ad passed 5× ROAS", body: "@glowwithmaya's \"Morning routine in 30 seconds\" made $19.2K GMV on $3.4K spend in 5 days.", verdict: "scale", evaluation: "Running 40% above the 4.0× target. Raise the budget about 20% a day and brief two new hook variations.", metrics: [["ROAS", "5.6×"], ["CTR", "3.4%"], ["GMV", "$19.2K"]] },
+      { id: "n2", brand: "pawsome-pantry", type: "result", time: "2026-10-31T08:58:00", channel: "#client-pawsome", title: "Corgi picky-eater video is the top ad this week", body: "\"Picky eater test\" by @bentleythecorgi has the highest ROAS of any ad across all brands.", verdict: "scale", evaluation: "Strong hook and CTR 4.2%. Make a cat version (already in review) and test a 9-second cut.", metrics: [["ROAS", "6.1×"], ["CTR", "4.2%"], ["GMV", "$10.7K"]] },
+      { id: "n3", brand: "fernhollow-coffee", type: "result", time: "2026-10-31T08:31:00", channel: "#client-fernhollow", title: "Blind taste test ad is wearing out", body: "Frequency reached 3.9 and ROAS fell from 3.4× to 2.6× over the last 7 days.", verdict: "fix", evaluation: "Cap frequency at 3 and move $200 a day to \"Cold brew in 3 steps\", which is holding at 3.4×.", metrics: [["ROAS", "2.6×"], ["Frequency", "3.9"], ["CTR", "1.7%"]] },
+      { id: "n4", brand: "ridgeline-active", type: "result", time: "2026-10-31T07:58:00", channel: "#client-ridgeline", title: "Leggings restock ad hit 5.1× in its first week", body: "\"Squat-proof test\" made $26K GMV since the restock went live.", verdict: "scale", evaluation: "Best performer for Ridgeline this quarter. Request two variations from @coachameliaf before Black Friday.", metrics: [["ROAS", "5.1×"], ["CTR", "2.9%"], ["GMV", "$26K"]] },
+      { id: "n5", brand: "tidewell-hydration", type: "news", time: "2026-10-30T17:48:00", channel: "#client-tidewell", title: "Two creatives rejected for health claims", body: "TikTok rejected two scripts that implied medical benefits.", verdict: "fix", evaluation: "Rewrite with compliance-safe wording before relaunch. The account is already below break-even.", metrics: [] },
+      { id: "n6", brand: "tidewell-hydration", type: "result", time: "2026-10-30T17:10:00", channel: "#client-tidewell", title: "Account ROAS is below break-even", body: "30-day ROAS is 2.19× against a 2.5× break-even target. GMV is down 11%.", verdict: "fix", evaluation: "Pause the myth-busting ad (1.6×) and put its budget behind the gym bag creative (2.7×).", metrics: [["ROAS", "2.19×"], ["GMV", "$29.8K"], ["Spend", "$13.6K"]] },
+      { id: "n7", brand: "lumora-skin", type: "news", time: "2026-10-30T16:40:00", channel: "#client-lumora", title: "Client approved the LIVE replay clip", body: "Hannah from Lumora approved the serum Q&A clip and wants more SPF content in November.", verdict: "info", evaluation: "Plan two SPF videos for the first week of November.", metrics: [] },
+      { id: "n8", brand: "marigold-home", type: "news", time: "2026-10-30T15:30:00", channel: "#client-marigold", title: "7 creators haven't posted since samples arrived", body: "Posting slowed from 63 to 44 videos this period.", verdict: "watch", evaluation: "Reminders went out through Euka today. Replace creators who don't post within 5 days.", metrics: [["Videos", "44"], ["Creators", "19"]] },
+      { id: "n9", brand: "lumora-skin", type: "result", time: "2026-10-30T11:05:00", channel: "#client-lumora", title: "Mask before/after ad paused", body: "Conversion rate dropped below 2.5% after day 10.", verdict: "watch", evaluation: "Expected fatigue for a 22-second format. Two new hooks are being briefed.", metrics: [["ROAS", "2.9×"], ["CVR", "2.4%"]] },
+      { id: "n10", brand: "pawsome-pantry", type: "news", time: "2026-10-31T10:02:00", channel: "#client-pawsome", title: "27 new creators onboarded through Euka", body: "Samples ship Monday for the freeze-dried line.", verdict: "info", evaluation: "Expect a jump in videos posted in about 10 days.", metrics: [["New creators", "27"]] },
+      { id: "n11", brand: "fernhollow-coffee", type: "news", time: "2026-10-29T14:22:00", channel: "#client-fernhollow", title: "Holiday bundle launches Nov 10", body: "Client asked for 6 creators to be lined up for the launch.", verdict: "info", evaluation: "Shortlist creators from the cold brew campaign; they convert best for this brand.", metrics: [] },
+      { id: "n12", brand: "ridgeline-active", type: "news", time: "2026-10-29T12:10:00", channel: "#client-ridgeline", title: "Black Friday pricing locked", body: "The client sends the creative brief on Friday.", verdict: "info", evaluation: "Reserve budget for the leggings creative; it carries 55% of GMV.", metrics: [] },
     ],
   };
 })();
