@@ -169,7 +169,7 @@ function drawFrame(n){
   x.clearRect(0, 0, c.width, c.height);
   if (n >= 218) endCard(n);
   labels(n);
-  hud(n);
+  if (!window.NOHUD) hud(n);
 }
 function drawEmber(){
   x.clearRect(0, 0, c.width, c.height);

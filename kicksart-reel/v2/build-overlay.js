@@ -14,6 +14,7 @@ fs.mkdirSync(out, { recursive: true });
   page.on("pageerror", e => console.error("page error:", e.message));
   await page.goto("file://" + path.join(__dirname, "overlay.html"));
   await page.evaluate(() => window.ready);
+  if (process.env.NOHUD) await page.evaluate(() => { window.NOHUD = true; });   // clean frames for stills
   const canvas = await page.$("#c");
   const w = await page.evaluate(() => window.drawEmber());
   console.log("EMBER width on plate:", Math.round(w));
