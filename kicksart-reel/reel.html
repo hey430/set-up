@@ -63,6 +63,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--paper)}
 .crop.b{right:3.2vmin;top:3.2vmin;border-right-width:1.5px;border-top-width:1.5px}
 .crop.c{left:3.2vmin;bottom:3.2vmin;border-left-width:1.5px;border-bottom-width:1.5px}
 .crop.d{right:3.2vmin;bottom:3.2vmin;border-right-width:1.5px;border-bottom-width:1.5px}
+#player{position:fixed;left:50%;bottom:calc(max(14px,2.2vmin) + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:12px;width:min(560px,calc(100% - 32px));padding:8px 10px;background:rgba(17,17,17,.88);color:#F2F1ED;border-radius:999px;font:500 12px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.04em;transition:opacity .4s ease}
+#player.idle{opacity:0}
+#player button{flex:none;min-width:58px;height:30px;border:0;border-radius:999px;background:#F2F1ED;color:#111;font:inherit;text-transform:uppercase;cursor:pointer}
+#player #loopBtn{background:transparent;color:#8C8A84;border:1px solid #444}
+#player #loopBtn[aria-pressed="true"]{color:#F2F1ED;border-color:#F2F1ED}
+#player button:focus-visible,#player input:focus-visible{outline:2px solid #2340FF;outline-offset:2px}
+#player input{flex:1;min-width:0;accent-color:#2340FF}
+#player span{flex:none;font-variant-numeric:tabular-nums;color:#CFCDC6}
+@media (max-width:420px){#player span{display:none}}
 #cover{position:absolute;left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;background:var(--ink)}
 </style>
 </head>
@@ -460,11 +469,39 @@ window.ready = document.fonts.ready.then(() => Promise.all([
   document.fonts.load('500 20px "Archivo"'), document.fonts.load('400 12px "JetBrains Mono"')
 ])).then(() => { measureFont(); render(0); return true; });
 
-// Live preview when opened directly in a browser
+// Live player when opened directly in a browser (hidden in ?capture mode)
 if (!/[?&]capture/.test(location.search)){
-  let t0 = null;
+  document.body.insertAdjacentHTML("beforeend",
+    '<div id="player" role="group" aria-label="Playback">' +
+      '<button type="button" id="pp" aria-label="Pause">Pause</button>' +
+      '<input type="range" id="scrub" min="0" max="15" step="0.0166667" value="0" aria-label="Timeline">' +
+      '<span id="ptime">00.00 / 15.00</span>' +
+      '<button type="button" id="loopBtn" aria-pressed="true">Loop</button>' +
+    '</div>');
+  const pp = $("pp"), scrub = $("scrub"), ptime = $("ptime"), loopBtn = $("loopBtn"), player = $("player");
+  let playing = true, looping = true, t = 0, last = null, idle;
+  const setT = v => { t = v; render(t); scrub.value = t; ptime.textContent = t.toFixed(2).padStart(5, "0") + " / 15.00"; };
+  const setPlaying = on => { playing = on; pp.textContent = on ? "Pause" : "Play"; pp.setAttribute("aria-label", on ? "Pause" : "Play"); last = null; };
+  pp.addEventListener("click", () => { if (!playing && t >= 14.99) setT(0); setPlaying(!playing); });
+  loopBtn.addEventListener("click", () => { looping = !looping; loopBtn.setAttribute("aria-pressed", looping); });
+  scrub.addEventListener("input", () => { setPlaying(false); setT(+scrub.value); });
+  addEventListener("keydown", e => {
+    if (e.code === "Space"){ e.preventDefault(); pp.click(); }
+    if (e.code === "ArrowRight"){ setPlaying(false); setT(Math.min(15, t + (e.shiftKey ? .5 : 1 / 60))); }
+    if (e.code === "ArrowLeft"){ setPlaying(false); setT(Math.max(0, t - (e.shiftKey ? .5 : 1 / 60))); }
+  });
+  const wake = () => { player.classList.remove("idle"); clearTimeout(idle); idle = setTimeout(() => { if (playing) player.classList.add("idle"); }, 2200); };
+  ["pointermove", "pointerdown", "keydown"].forEach(ev => addEventListener(ev, wake)); wake();
   window.ready.then(() => {
-    const loop = ts => { if (t0 === null) t0 = ts; render(((ts - t0) / 1000) % 15); requestAnimationFrame(loop); };
+    const loop = ts => {
+      if (playing){
+        if (last !== null) t += (ts - last) / 1000;
+        last = ts;
+        if (t >= 15){ if (looping) t = t % 15; else { t = 15; setPlaying(false); } }
+        setT(t);
+      }
+      requestAnimationFrame(loop);
+    };
     requestAnimationFrame(loop);
   });
 }
