@@ -55,6 +55,19 @@ p{margin:0}
 .btn[disabled],.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;transform:none}
 @media (prefers-reduced-motion: reduce){.btn{transition:none}.btn:hover{transform:none}}
 
+/* Intro film (first screen) */
+.intro{position:relative;height:100vh;height:100svh;min-height:420px;background:#E1D9CF;overflow:hidden}
+.intro video{width:100%;height:100%;object-fit:contain}   /* whole frame; the backdrop matches the film */
+@media (max-aspect-ratio: 3/4){.intro video{transform:scale(1.3)}}
+.intro-ui{position:absolute;left:50%;bottom:calc(max(64px, 10vh) + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);display:flex;gap:10px;z-index:2}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 18px;border-radius:999px;border:0;background:rgba(20,20,20,.78);color:#F2EEE8;font-weight:600;font-size:14px;white-space:nowrap;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .2s ease}
+.pill:hover{background:rgba(20,20,20,.92)}
+.pill.ghost{background:rgba(246,242,236,.75);color:var(--ink)}
+.pill.ghost:hover{background:rgba(246,242,236,.95)}
+.intro-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(20,20,20,.12);z-index:2}
+.intro-bar i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(0);background:var(--ink)}
+.intro-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;min-height:56px;padding:0 26px;font-size:16px}
+
 /* Announcement + header */
 .announce{background:var(--ink);color:var(--paper)}
 .announce .wrap{display:flex;justify-content:center;gap:6px 28px;flex-wrap:wrap;padding-block:9px;font-size:13px;font-weight:500;text-align:center}
@@ -90,7 +103,12 @@ p{margin:0}
 .hero .facts b{font-size:22px;font-weight:700;letter-spacing:-.03em}
 .hero .facts span{font-size:13px;color:var(--muted)}
 .film{position:relative;border-radius:18px;overflow:hidden;background:#DAD2C6;aspect-ratio:16/9;max-width:100%;box-shadow:0 30px 60px -30px rgba(20,20,20,.35)}
-.film video{width:100%;height:100%;object-fit:cover}
+.film video,.film img{width:100%;height:100%;object-fit:cover}
+.hero-shot{display:block;width:100%;padding:0;border:0;cursor:pointer;aspect-ratio:4/3}
+.hero-shot img{transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+.hero-shot:hover img{transform:scale(1.03)}
+.hero-tag{position:absolute;left:14px;bottom:12px;display:flex;gap:8px;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(20,20,20,.78);color:#F2EEE8;font-size:13px;font-weight:600}
+.hero-tag i{width:8px;height:8px;border-radius:50%;background:#2AA7B4}
 .film figcaption{position:absolute;left:14px;bottom:12px;display:flex;gap:8px;align-items:center;padding:6px 11px;border-radius:999px;background:rgba(20,20,20,.72);color:#F2EEE8;font-size:12px;font-weight:600}
 .film figcaption i{width:7px;height:7px;border-radius:50%;background:var(--ember)}
 @media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
@@ -316,6 +334,23 @@ p{margin:0}
 </head>
 <body>
 
+<section class="intro" id="intro" aria-label="Kicksart launch film">
+  <video id="intro-video" src="media/kicksart-film-1080.mp4" poster="media/kicksart-intro-poster.jpg" muted playsinline preload="auto" aria-label="Kicksart launch film: a dot draws the shoe, the colourways change, and the dot becomes the logo"></video>
+  <button class="pill intro-play" id="intro-play" type="button" hidden>
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>Play film
+  </button>
+  <div class="intro-ui">
+    <button class="pill ghost" id="snd" type="button" aria-pressed="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" stroke="none"/><path id="snd-wave" d="M17 9l4 6M21 9l-4 6"/></svg>
+      <span id="snd-label">Sound off</span>
+    </button>
+    <button class="pill" id="skip" type="button">Skip intro
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    </button>
+  </div>
+  <div class="intro-bar" aria-hidden="true"><i id="intro-prog"></i></div>
+</section>
+
 <div class="announce"><div class="wrap">
   <span>Order on <b>WhatsApp</b></span>
   <span>Pay in full, or <b>half now and half on delivery</b></span>
@@ -341,7 +376,7 @@ p{margin:0}
 
 <main id="top">
 
-<section class="hero">
+<section class="hero" id="home">
   <div class="wrap">
     <div>
       <span class="eyebrow">SS27 · Drop 01 · Five colourways</span>
@@ -357,10 +392,10 @@ p{margin:0}
         <div><b>50 / 50</b><span>payment option</span></div>
       </div>
     </div>
-    <figure class="film" style="margin:0">
-      <video src="media/kicksart-film-720.mp4" poster="media/kicksart-film-poster.jpg" autoplay muted loop playsinline aria-label="Kicksart launch film: the dot draws the shoe, the colourways change, and the dot becomes the logo"></video>
-      <figcaption><i></i>Kicksart — launch film</figcaption>
-    </figure>
+    <button class="film hero-shot" type="button" data-pv="lagoon" aria-label="KA-01 Lagoon, Rs 18,500. Choose size">
+      <img src="img/products/lagoon.jpg" alt="KA-01 Lagoon sneaker, side view">
+      <span class="hero-tag"><i></i>KA-01 Lagoon · <span id="hero-price">Rs 18,500</span></span>
+    </button>
   </div>
 </section>
 
@@ -806,6 +841,57 @@ const GALLERY = [
   $("nav").addEventListener("click", e => { if (e.target.closest("a")){ $("nav").classList.remove("open"); $("menu-btn").setAttribute("aria-expanded", "false"); } });
 
   renderCart();
+  $("hero-price").textContent = money(byId.lagoon.price);
+
+  /* ================= Intro film ================= */
+  const intro = $("intro"), iv = $("intro-video");
+  let autoDone = false, scrolling = null;
+  const below = () => intro.offsetTop + intro.offsetHeight;
+  function cancelScroll(){ if (scrolling){ cancelAnimationFrame(scrolling); scrolling = null; } }
+  function glideTo(y){
+    cancelScroll();
+    if (reduce){ scrollTo({ top: y, behavior: "instant" }); return; }
+    const y0 = scrollY, d = y - y0, T = 1400, t0 = performance.now();
+    const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / T);
+      scrollTo({ top: y0 + d * ease(k), behavior: "instant" });
+      scrolling = k < 1 ? requestAnimationFrame(step) : null;
+    };
+    scrolling = requestAnimationFrame(step);
+  }
+  ["wheel", "touchstart", "keydown", "mousedown"].forEach(ev => addEventListener(ev, cancelScroll, { passive: true }));
+  function enterSite(){
+    autoDone = true;
+    glideTo(below());
+    setTimeout(() => { if (scrollY >= below() - 4) $("home").querySelector("h1").focus?.({ preventScroll: true }); }, reduce ? 0 : 1500);
+  }
+  iv.addEventListener("ended", () => { if (!autoDone && scrollY < intro.offsetHeight * .5) enterSite(); });
+  iv.addEventListener("timeupdate", () => { $("intro-prog").style.transform = "scaleX(" + (iv.currentTime / (iv.duration || 11.5)) + ")"; });
+  $("skip").addEventListener("click", () => { iv.pause(); enterSite(); });
+  $("snd").addEventListener("click", () => {
+    iv.muted = !iv.muted;
+    $("snd").setAttribute("aria-pressed", String(!iv.muted));
+    $("snd-label").textContent = iv.muted ? "Sound off" : "Sound on";
+    $("snd-wave").setAttribute("d", iv.muted ? "M17 9l4 6M21 9l-4 6" : "M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12");
+    if (iv.paused && !iv.ended) iv.play().catch(() => {});
+  });
+  $("intro-play").addEventListener("click", () => { $("intro-play").hidden = true; iv.currentTime = 0; iv.play().catch(() => {}); });
+  function startIntro(){
+    if (reduce){ $("intro-play").hidden = false; return; }      // no autoplay for reduced motion
+    const p = iv.play();
+    if (p && p.catch) p.catch(() => { $("intro-play").hidden = false; });
+  }
+  // Pause when scrolled away, resume when it comes back into view
+  if ("IntersectionObserver" in window){
+    new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting || en.intersectionRatio < .25){ if (!iv.paused) iv.pause(); }
+      else if (iv.paused && !iv.ended && autoDone && iv.currentTime > 0) iv.play().catch(() => {});
+    }, { threshold: [0, .25, .5] }).observe(intro);
+  }
+  h1Focusable();
+  function h1Focusable(){ const h = $("home").querySelector("h1"); h.setAttribute("tabindex", "-1"); h.style.outline = "none"; }
+  startIntro();
 
   /* ================= Gallery sphere ================= */
   const stage = $("stage"), track = $("track");
