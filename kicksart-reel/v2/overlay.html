@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kicksart v2 Overlay</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400;500&display=block">
+<style>
+  html,body{margin:0;background:transparent;overflow:hidden}
+  canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+/*
+  Motion-graphics layer for the Kicksart v2 reel.
+  Coordinates are authored on the 1280x720 source plate and drawn at 1.5x (1920x1080).
+  drawFrame(n): n = output frame number (1-based, 24 fps).
+    n <= 217  : HUD, captions and corrected exploded-view labels over the source plate
+    n >= 218  : end card (sphere shrinks into the full stop of the wordmark)
+  drawEmber(): the corrected "EMBER" word, composited behind the shoe by finish.py
+*/
+const c = document.getElementById("c"), x = c.getContext("2d");
+const S = 1.5, FPS = 24, LAST_PLATE = 217;
+const INK = "#141414", GREY = "#8C8A84", HAIR = "rgba(20,20,20,.22)";
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const P = (n, a, b) => clamp((n - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const outExpo = k => k >= 1 ? 1 : 1 - Math.pow(2, -10 * k);
+const outCubic = k => 1 - Math.pow(1 - k, 3);
+const inOutCubic = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+
+function font(weight, px, family = "Archivo", stretch = "normal"){
+  x.font = weight + " " + (px * S) + "px \"" + family + "\", Arial, sans-serif";
+  x.fontStretch = stretch;
+}
+function text(str, px, py, opts = {}){
+  x.save();
+  x.globalAlpha = opts.alpha ?? 1;
+  x.fillStyle = opts.color || INK;
+  x.textAlign = opts.align || "left";
+  x.textBaseline = opts.baseline || "alphabetic";
+  x.letterSpacing = (opts.ls || 0) * S + "px";
+  x.fillText(str, px * S, py * S);
+  x.restore();
+}
+
+/* ---------------- HUD ---------------- */
+const SCENES = [[1,"01 — Point"],[33,"02 — Line"],[67,"03 — Form"],[89,"04 — Word"],[144,"05 — Colour"],[182,"06 — Anatomy"],[201,"07 — Impact"],[218,"08 — Mark"]];
+const CAPTIONS = [[67,143,"KA-01","Lagoon"],[144,153,"KA-02","Bone"],[154,163,"KA-03","Ember"],[164,172,"KA-04","Moss"],[173,200,"KA-05","Ink"]];
+
+function hud(n){
+  const a = outCubic(P(n, 1, 12)) * (n >= 218 ? lerp(1, .6, P(n, 230, 250)) : 1);
+  if (a <= 0) return;
+  // crop marks
+  x.save(); x.globalAlpha = a; x.strokeStyle = HAIR; x.lineWidth = 1.5;
+  const m = 22 * S, L = 18 * S, W = c.width, H = c.height;
+  [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]].forEach(([px, py, dx, dy]) => {
+    x.beginPath(); x.moveTo(px, py + dy * L); x.lineTo(px, py); x.lineTo(px + dx * L, py); x.stroke();
+  });
+  x.restore();
+  font(400, 9.5, "JetBrains Mono");
+  const o = { color: GREY, alpha: a, ls: 1 };
+  text("KICKSART", 44, 52, o);
+  text("SHOWREEL / SS27", 1236, 52, { ...o, align: "right" });
+  const f = n - 1, ss = Math.floor(f / FPS), ff = f % FPS;
+  text("TC 00:00:" + String(ss).padStart(2, "0") + ":" + String(ff).padStart(2, "0"), 44, 676, o);
+  let sc = SCENES[0][1]; SCENES.forEach(s => { if (n >= s[0]) sc = s[1]; });
+  text(sc.toUpperCase(), 1236, 676, { ...o, align: "right" });
+  // colourway caption
+  CAPTIONS.forEach(([a0, a1, code, name]) => {
+    if (n < a0 || n > a1) return;
+    const k = outExpo(P(n, a0, a0 + 6));
+    font(500, 9.5, "JetBrains Mono");
+    text(code + "   " + name.toUpperCase(), 44, 652 + (1 - k) * 8, { color: INK, alpha: a * k * .8, ls: 1 });
+  });
+}
+
+/* ---------------- Exploded-view labels ----------------
+   Replaces the source's unreadable label words. Positions match the source's own leader lines.
+   side -1: text ends at x (left labels), side 1: text starts at x (right labels). y = baseline. */
+const LABELS = [
+  [-1, 280, 132, "Signature dot", "The Kicksart mark"],
+  [-1, 230, 362, "Midsole", "EVA foam · 32 mm"],
+  [-1, 218, 484, "Outsole", "Rubber · gum finish"],
+  [ 1, 790, 104, "Upper", "Engineered knit"],
+  [ 1, 1034, 262, "Toe cap", "Nubuck overlay"],
+  [ 1, 1034, 385, "Cushioning", "Dual-density foam"],
+  [ 1, 1046, 488, "Grip", "Waffle tread"]
+];
+// Opacity follows the source labels' own fade (frames 183-200)
+const LABEL_ALPHA = {183:.68,184:.88,185:.97,199:.95,200:.7};
+function labels(n){
+  if (n < 183 || n > 200) return;
+  const a = LABEL_ALPHA[n] ?? 1;
+  LABELS.forEach(([side, lx, ly, title, spec], i) => {
+    const align = side < 0 ? "right" : "left";
+    font(600, 19);
+    text(title, lx, ly - 2, { align, alpha: a, color: "#2A2A2A", ls: -.2 });
+    font(400, 8.5, "JetBrains Mono");
+    text(spec.toUpperCase(), lx, ly + 13, { align, alpha: a * .9, color: "#77756F", ls: .8 });
+  });
+}
+
+/* ---------------- End card ---------------- */
+// Source sphere at the hand-off frame (218): centre (659, 391), radius ~240, moving inward ~8 px/frame
+const SPH = { n0: 218, n1: 238, cx: 659, cy: 391, r: 240, v: -8 };
+const MARK = { str: "kicksart", fs: 118, cx: 640, base: 384 };
+let markLayout = null;
+function layoutMark(){
+  font(800, MARK.fs);
+  x.letterSpacing = (-.045 * MARK.fs * S) + "px";
+  const total = x.measureText(MARK.str).width / S;
+  const dotR = MARK.fs * .088, gap = MARK.fs * .05;
+  const startX = MARK.cx - (total + gap + dotR * 2) / 2;
+  const xs = [];
+  for (let i = 0; i <= MARK.str.length; i++) xs.push(startX + x.measureText(MARK.str.slice(0, i)).width / S);
+  x.letterSpacing = "0px";
+  markLayout = { xs, dotR, dotX: xs[xs.length - 1] + gap + dotR, dotY: MARK.base - dotR };
+}
+function hermite(k, p0, p1, m0){ // cubic Hermite with start slope m0 and flat end
+  const k2 = k * k, k3 = k2 * k;
+  return (2 * k3 - 3 * k2 + 1) * p0 + (k3 - 2 * k2 + k) * m0 + (-2 * k3 + 3 * k2) * p1;
+}
+function sphere(cx, cy, r, shade){
+  const X = cx * S, Y = cy * S, R = r * S;
+  const g = x.createRadialGradient(X - R * .38, Y - R * .42, R * .02, X, Y, R);
+  g.addColorStop(0, "rgba(" + Math.round(lerp(20, 92, shade)) + "," + Math.round(lerp(20, 90, shade)) + "," + Math.round(lerp(20, 88, shade)) + ",1)");
+  g.addColorStop(.35, "rgb(" + Math.round(lerp(20, 34, shade)) + "," + Math.round(lerp(20, 33, shade)) + "," + Math.round(lerp(20, 32, shade)) + ")");
+  g.addColorStop(.8, "rgb(12,12,12)");
+  g.addColorStop(1, "rgb(" + Math.round(lerp(20, 26, shade)) + "," + Math.round(lerp(20, 25, shade)) + "," + Math.round(lerp(20, 24, shade)) + ")");
+  x.fillStyle = g;
+  x.beginPath(); x.arc(X, Y, R, 0, Math.PI * 2); x.fill();
+}
+function endCard(n){
+  if (!markLayout) layoutMark();
+  const { xs, dotR, dotX, dotY } = markLayout;
+  // Letters rise out of a baseline mask, staggered
+  font(800, MARK.fs);
+  const top = MARK.base - MARK.fs * .78, bottom = MARK.base + MARK.fs * .24;
+  for (let i = 0; i < MARK.str.length; i++){
+    const k = outExpo(P(n, 226 + i * 1.2, 240 + i * 1.2));
+    if (k <= 0) continue;
+    x.save();
+    x.beginPath(); x.rect((xs[i] - 6) * S, top * S, (xs[i + 1] - xs[i] + 12) * S, (bottom - top) * S); x.clip();
+    x.letterSpacing = "0px";
+    text(MARK.str[i], xs[i], MARK.base + (1 - k) * MARK.fs * 1.05, { color: INK });
+    x.restore();
+  }
+  // Sphere: continue the source's shrink, then settle as the full stop with a small overshoot
+  const N = SPH.n1 - SPH.n0, k = P(n, SPH.n0, SPH.n1);
+  let r = hermite(k, SPH.r, dotR, SPH.v * N);
+  const pk = inOutCubic(k);
+  const cx = lerp(SPH.cx, dotX, pk), cy = lerp(SPH.cy, dotY, pk);
+  if (n > SPH.n1) r = dotR * (1 + .28 * Math.sin(Math.PI * P(n, SPH.n1, SPH.n1 + 5)));
+  sphere(cx, cy, Math.max(r, dotR * .9), 1 - outCubic(k));
+  // Tagline + URL
+  const tk = outCubic(P(n, 240, 252));
+  font(500, 21);
+  text("Wear the art.", 640, MARK.base + 56 + (1 - tk) * 10, { align: "center", alpha: tk, color: "#3A3936", ls: -.2 });
+  const uk = outCubic(P(n, 246, 258));
+  font(400, 9.5, "JetBrains Mono");
+  text("KICKSART.COM", 640, 676, { align: "center", alpha: uk, color: GREY, ls: 1 });
+}
+
+/* ---------------- Entry points ---------------- */
+function drawFrame(n){
+  x.clearRect(0, 0, c.width, c.height);
+  if (n >= 218) endCard(n);
+  labels(n);
+  hud(n);
+}
+function drawEmber(){
+  x.clearRect(0, 0, c.width, c.height);
+  // Match the source's colourway word: solid, heavy, centred behind the shoe (cap height ~255 px on the plate)
+  x.fillStyle = "#EA5A27";
+  x.textAlign = "center"; x.textBaseline = "alphabetic";
+  let fs = 300;
+  font(800, fs, "Archivo", "condensed");
+  x.letterSpacing = (-.02 * fs * S) + "px";
+  const m = x.measureText("EMBER");
+  const cap = m.actualBoundingBoxAscent / S;
+  fs = fs * 258 / cap;
+  font(800, fs, "Archivo", "condensed");
+  x.letterSpacing = (-.02 * fs * S) + "px";
+  const wid = x.measureText("EMBER").width / S;
+  if (wid > 1040){ fs = fs * 1040 / wid; font(800, fs, "Archivo", "condensed"); x.letterSpacing = (-.02 * fs * S) + "px"; }
+  x.fillText("EMBER", 640 * S, 469 * S);
+  x.letterSpacing = "0px";
+  return x.measureText("EMBER").width / S;
+}
+window.drawFrame = drawFrame;
+window.drawEmber = drawEmber;
+window.ready = document.fonts.ready.then(() => Promise.all([
+  document.fonts.load('800 100px "Archivo"'), document.fonts.load('600 20px "Archivo"'),
+  document.fonts.load('500 20px "Archivo"'), document.fonts.load('400 12px "JetBrains Mono"'),
+  document.fonts.load('500 12px "JetBrains Mono"')
+])).then(() => true);
+</script>
+</body>
+</html>
