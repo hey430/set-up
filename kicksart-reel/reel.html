@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kicksart Showreel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400;500&display=block">
+<style>
+/* Kicksart showreel. Frame-accurate: window.render(t) draws the frame at time t (seconds, 0..15). */
+:root{
+  --paper:#F2F1ED;   /* gallery wall */
+  --ink:#111111;
+  --grey:#8C8A84;
+  --hair:#CFCDC6;
+  --cobalt:#2340FF;  /* the one colour */
+  --sw:min(92vw, 100vmin);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--paper)}
+#stage{position:relative;width:100vw;height:100vh;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Archivo",Arial,sans-serif}
+.layer{position:absolute;inset:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:400;letter-spacing:.08em;text-transform:uppercase}
+
+/* Main shoe */
+#shoeWrap{position:absolute;left:50%;top:50%;width:var(--sw);aspect-ratio:2/1;transform-origin:50% 62%;will-change:transform}
+#shoeWrap svg{display:block;width:100%;height:100%;overflow:visible}
+.shadow{position:absolute;left:50%;height:calc(var(--sw) * .045);width:calc(var(--sw) * .86);border-radius:50%;background:radial-gradient(closest-side,rgba(17,17,17,.24),rgba(17,17,17,0));transform:translate(-50%,-50%)}
+
+/* Dot */
+#dot{position:absolute;left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;background:var(--ink);will-change:transform}
+#dshadow{position:absolute;left:0;top:0;width:100px;height:14px;margin:-7px 0 0 -50px;border-radius:50%;background:radial-gradient(closest-side,rgba(17,17,17,.28),rgba(17,17,17,0))}
+
+/* Words */
+.mask{position:absolute;left:50%;top:50%;overflow:hidden;line-height:.8;padding:.06em .04em .02em;transform:translate(-50%,-50%);white-space:nowrap}
+.mask span{display:block;will-change:transform}
+.word{font-weight:900;font-size:min(16vw,26vh);letter-spacing:-.03em;text-transform:uppercase}
+.wordcap{position:absolute;left:50%;transform:translateX(-50%);font-size:max(11px,1.25vmin);color:var(--grey);white-space:nowrap}
+
+/* Colorway panels */
+.cw{position:absolute;inset:0;overflow:hidden}
+.cw .name{position:absolute;left:50%;top:50%;font-weight:900;font-stretch:125%;font-size:min(24vw,40vh);line-height:.8;letter-spacing:-.04em;white-space:nowrap;text-transform:uppercase}
+.cw .shoe{position:absolute;left:50%;top:50%;width:var(--sw);aspect-ratio:2/1}
+.cw .shoe svg{display:block;width:100%;height:100%;overflow:visible}
+.cw .cap{position:absolute;left:max(28px,6.4vmin);bottom:max(60px,10.5vmin);font-size:max(11px,1.3vmin);display:flex;gap:2.4vmin}
+
+/* Logo */
+#mark{position:absolute;left:50%;top:50%;display:flex;font-weight:800;font-stretch:108%;font-size:min(13vw,20vh);letter-spacing:-.045em;line-height:.82;transform:translate(-54%,-62%)}
+#mark .m{overflow:hidden;padding:.08em 0 .04em}
+#mark .m span{display:block}
+#mark .base{display:inline-block;width:0;height:0;vertical-align:baseline}
+#tag{position:absolute;left:50%;font-weight:500;font-size:max(16px,2.6vmin);letter-spacing:-.01em;white-space:nowrap}
+#url{position:absolute;left:50%;bottom:max(28px,6.4vmin);transform:translateX(-50%);font-size:max(11px,1.25vmin);color:var(--grey)}
+
+/* HUD */
+#hud{position:absolute;inset:0;pointer-events:none;font-size:max(10px,1.15vmin);color:var(--grey)}
+#hud .c{position:absolute;white-space:nowrap}
+#hud .tl{left:max(28px,6.4vmin);top:max(28px,6.4vmin)}
+#hud .tr{right:max(28px,6.4vmin);top:max(28px,6.4vmin)}
+#hud .bl{left:max(28px,6.4vmin);bottom:max(28px,6.4vmin);font-variant-numeric:tabular-nums}
+#hud .br{right:max(28px,6.4vmin);bottom:max(28px,6.4vmin)}
+.crop{position:absolute;width:2.6vmin;height:2.6vmin;border-color:var(--hair);border-style:solid;border-width:0}
+.crop.a{left:3.2vmin;top:3.2vmin;border-left-width:1.5px;border-top-width:1.5px}
+.crop.b{right:3.2vmin;top:3.2vmin;border-right-width:1.5px;border-top-width:1.5px}
+.crop.c{left:3.2vmin;bottom:3.2vmin;border-left-width:1.5px;border-bottom-width:1.5px}
+.crop.d{right:3.2vmin;bottom:3.2vmin;border-right-width:1.5px;border-bottom-width:1.5px}
+#cover{position:absolute;left:0;top:0;width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;background:var(--ink)}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- Logo scene sits at the bottom; everything else covers it until the end -->
+  <div class="layer" id="logoLayer">
+    <div id="mark" aria-label="kicksart"></div>
+    <div id="tag">Wear the art.</div>
+    <div id="url" class="mono">kicksart.com</div>
+  </div>
+
+  <div class="layer" id="shoeLayer">
+    <div class="shadow" id="shadow"></div>
+    <div id="shoeWrap"></div>
+  </div>
+
+  <div class="layer" id="typeLayer"></div>
+  <div class="layer" id="cwLayer"></div>
+
+  <div id="dshadow"></div>
+  <div id="cover"></div>
+  <div id="dot"></div>
+
+  <div id="hud">
+    <i class="crop a"></i><i class="crop b"></i><i class="crop c"></i><i class="crop d"></i>
+    <span class="c tl mono">Kicksart</span>
+    <span class="c tr mono">Showreel / SS27</span>
+    <span class="c bl mono" id="tc">TC 00:00:00:00</span>
+    <span class="c br mono" id="scene">01 — Point</span>
+  </div>
+</div>
+
+<script>
+/* ============ Shoe geometry (viewBox 600 x 300, toe facing right) ============ */
+const UPPER = "M36 214 C34 180 40 120 56 80 C62 70 74 70 84 80 C110 106 160 114 200 104 C226 96 238 78 258 70 C276 64 292 72 300 88 C330 112 380 138 420 150 C470 164 520 178 556 196 C576 204 584 210 584 214 Z";
+const PARTS = [
+  // group, svg markup (colours come from CSS custom properties)
+  ["sole2", '<path d="M36 244 H560 Q586 244 584 252 Q582 262 556 262 H48 Q34 262 34 252 Z" fill="var(--out)" stroke="#111" stroke-opacity=".14" stroke-width="1"/>'],
+  ["sole2", '<path d="M62 256 H552" stroke="var(--mid)" stroke-opacity=".35" stroke-width="3" stroke-dasharray="2 8" fill="none"/>'],
+  ["sole1", '<path d="M36 214 H558 Q586 216 586 234 Q586 244 574 244 H38 Q32 232 36 214 Z" fill="var(--mid)" stroke="#111" stroke-opacity=".16" stroke-width="1"/>'],
+  ["sole1", '<path d="M48 232 C140 225 200 239 300 231 C400 223 470 237 572 228" stroke="var(--out)" stroke-opacity=".22" stroke-width="1.6" fill="none"/>'],
+  ["upper", '<path d="' + UPPER + '" fill="var(--up)"/>'],
+  ["upper", '<path d="M84 80 C110 106 160 114 200 104 C226 96 238 78 258 70 L262 82 C240 90 228 108 200 116 C160 126 108 118 80 92 Z" fill="var(--lin)"/>'],
+  ["upper", '<path d="M110 214 C160 188 236 168 330 168 C384 168 424 184 452 214 Z" fill="var(--ov)"/>'],
+  ["upper", '<path d="M36 214 C34 180 40 120 56 80 C66 74 80 76 90 86 C98 130 118 180 156 214 Z" fill="var(--cap)" stroke="#111" stroke-opacity=".1" stroke-width="1"/>'],
+  ["upper", '<path d="M468 168 C518 178 560 194 584 214 H464 C448 200 450 182 468 168 Z" fill="var(--cap)" stroke="#111" stroke-opacity=".1" stroke-width="1"/>'],
+  ["upper", '<path d="M118 206 C168 181 238 161 330 160 C388 160 430 178 460 206" stroke="var(--lace)" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="5 5" fill="none"/>'],
+  ["upper", '<path d="M58 82 L48 58 L66 55 L76 78 Z" fill="var(--ov)"/>'],
+  ["upper", '<path d="M252 72 L248 54 L268 52 L272 68 Z" fill="var(--cap)"/>'],
+  ["upper", '<circle id="heelDot" cx="70" cy="150" r="10" fill="var(--dot)"/>'],
+  ["eyestay", '<path d="M294 92 C330 120 382 144 440 158 L434 178 C374 166 318 142 282 114 Z" fill="var(--ov)"/>'],
+  ["laces", '<path d="M304 101 l-16 -14 M330 118 l-16 -16 M358 132 l-14 -17 M388 144 l-12 -17 M416 153 l-10 -16 M292 86 c-20 -24 -42 -12 -30 4 M292 86 c-2 -30 22 -34 26 -12 M290 88 c-12 20 -8 40 2 54" stroke="var(--lace)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>']
+];
+const OUTLINE = "M300 262 H556 Q582 262 584 252 Q586 244 586 234 Q586 216 584 214 C584 210 576 204 556 196 C520 178 470 164 420 150 C380 138 330 112 300 88 C292 72 276 64 258 70 C238 78 226 96 200 104 C160 114 110 106 84 80 C74 70 62 70 56 80 C40 120 34 180 36 214 Q32 232 34 252 Q34 262 48 262 Z";
+const DETAIL = "M36 214 H584 M38 244 H584 M110 214 C160 188 236 168 330 168 C384 168 424 184 452 214 M468 168 C450 182 448 200 464 214 M90 86 C98 130 118 180 156 214 M294 92 C330 120 382 144 440 158";
+
+const GROUPS = ["sole2","sole1","upper","eyestay","laces"];
+const EXPLODE = {sole2:62, sole1:30, upper:-38, eyestay:-70, laces:-96};
+
+/* Colorways */
+const CW = {
+  cobalt:{name:"Cobalt", code:"KA-01", bg:"#E2E5FA", tone:"#D3D8F6", up:"#2340FF", ov:"#1B33D8", cap:"#F6F5F1", mid:"#F6F5F1", out:"#141414", lace:"#F6F5F1", lin:"#141414", dot:"#111111"},
+  bone:  {name:"Bone",   code:"KA-02", bg:"#E9E7E1", tone:"#DEDBD3", up:"#F8F7F3", ov:"#DAD6CC", cap:"#F8F7F3", mid:"#FFFFFF", out:"#BDB7AA", lace:"#F8F7F3", lin:"#2340FF", dot:"#2340FF"},
+  ember: {name:"Ember",  code:"KA-03", bg:"#F5DFD7", tone:"#EFCFC3", up:"#E5432D", ov:"#C2311E", cap:"#E5432D", mid:"#F6F5F1", out:"#2A1A16", lace:"#F6F5F1", lin:"#2A1A16", dot:"#F6F5F1"},
+  moss:  {name:"Moss",   code:"KA-04", bg:"#DFE6DB", tone:"#D0DACB", up:"#2F5D46", ov:"#244A37", cap:"#E9E4D4", mid:"#E9E4D4", out:"#8A5A2B", lace:"#E9E4D4", lin:"#E9E4D4", dot:"#E9E4D4"},
+  ink:   {name:"Ink",    code:"KA-05", bg:"#161616", tone:"#202020", up:"#151515", ov:"#262626", cap:"#151515", mid:"#1C1C1C", out:"#0E0E0E", lace:"#F2F1ED", lin:"#2340FF", dot:"#2340FF"}
+};
+const CW_ORDER = ["cobalt","bone","ember","moss","ink"];
+const CW_START = [6.5, 7.0, 7.5, 8.0, 8.5];
+
+function vars(c){ return ["up","ov","cap","mid","out","lace","lin","dot"].map(k => "--"+k+":"+c[k]).join(";"); }
+
+/* ============ Build DOM ============ */
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+
+// Symbol for colorway panels
+const symParts = PARTS.map(p => p[1].replace(' id="heelDot"', "")).join("");
+document.body.insertAdjacentHTML("afterbegin",
+  '<svg width="0" height="0" style="position:absolute"><symbol id="shoeSym" viewBox="0 0 600 300">' + symParts + '</symbol></svg>');
+
+// Main shoe with separable groups
+let main = '<svg viewBox="0 0 600 300"><defs><clipPath id="rev"><rect id="revRect" x="-20" y="-300" width="0" height="900"/></clipPath></defs><g clip-path="url(#rev)">';
+GROUPS.forEach(g => { main += '<g id="g-' + g + '">' + PARTS.filter(p => p[0] === g).map(p => p[1]).join("") + '</g>'; });
+main += '</g><line id="sweep" x1="0" x2="0" y1="40" y2="276" stroke="#111" stroke-width="2"/>';
+main += '<path id="outline" d="' + OUTLINE + '" pathLength="1" stroke="#111" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>';
+main += '<path id="detail" d="' + DETAIL + '" pathLength="1" stroke="#111" stroke-width="1.5" fill="none" stroke-linecap="round"/>';
+main += '<g id="labels" font-family="JetBrains Mono, monospace" fill="#111"></g></svg>';
+$("shoeWrap").innerHTML = main;
+$("shoeWrap").setAttribute("style", vars(CW.cobalt));
+
+// Exploded-view labels: [group, anchorX, anchorY, side, number, title, spec]
+const LABELS = [
+  ["laces", 336, 104, 1, "01", "Laces", "Waxed cotton / 120 cm"],
+  ["upper", 214, 140, -1, "02", "Upper", "Italian suede / 1.4 mm"],
+  ["sole1", 500, 232, 1, "03", "Midsole", "EVA foam / 32 mm stack"],
+  ["sole2", 130, 254, -1, "04", "Outsole", "Gum rubber / waffle"]
+];
+const labelsG = $("labels");
+LABELS.forEach((L, i) => {
+  const [g, ax, ay, side] = L;
+  const lx = side > 0 ? 668 : -68;
+  const anchor = side > 0 ? "start" : "end";
+  const tx = side > 0 ? lx + 10 : lx - 10;
+  const grp = document.createElementNS(NS, "g");
+  grp.setAttribute("id", "lab" + i);
+  grp.innerHTML =
+    '<circle cx="' + ax + '" cy="' + ay + '" r="3.2" fill="#111"/>' +
+    '<line class="ll" x1="' + ax + '" y1="' + ay + '" x2="' + ax + '" y2="' + ay + '" stroke="#111" stroke-width="1"/>' +
+    '<g class="lt"><text x="' + tx + '" y="' + (ay - 3) + '" font-size="12.5" font-weight="500" text-anchor="' + anchor + '" letter-spacing="1">' + L[4] + '  ' + L[5].toUpperCase() + '</text>' +
+    '<text x="' + tx + '" y="' + (ay + 13) + '" font-size="10" fill="#8C8A84" text-anchor="' + anchor + '" letter-spacing=".6">' + L[6].toUpperCase() + '</text></g>';
+  grp.dataset.lx = lx;
+  labelsG.appendChild(grp);
+});
+
+// Words
+const WORDS = [["Every",4.5],["Pair",5.0],["Is a",5.5],["Canvas",6.0]];
+WORDS.forEach((w, i) => {
+  $("typeLayer").insertAdjacentHTML("beforeend", '<div class="mask word" id="w' + i + '"><span>' + w[0] + '</span></div>');
+});
+$("typeLayer").insertAdjacentHTML("beforeend", '<div class="wordcap mono" id="wcap">Fig. 1 — the canvas</div>');
+
+// Colorway panels
+CW_ORDER.forEach((k, i) => {
+  const c = CW[k];
+  const fg = k === "ink" ? "#8C8A84" : "#6E6C66";
+  $("cwLayer").insertAdjacentHTML("beforeend",
+    '<div class="cw" id="cw' + i + '" style="background:' + c.bg + '">' +
+      '<div class="name" style="color:' + c.tone + '">' + c.name + '</div>' +
+      '<div class="shadow cwsh"></div>' +
+      '<div class="shoe" style="' + vars(c) + '"><svg viewBox="0 0 600 300"><use href="#shoeSym"/></svg></div>' +
+      '<div class="cap mono" style="color:' + fg + '"><span>' + c.code + '</span><span>' + c.name + '</span><span>0' + (i + 1) + ' / 05</span></div>' +
+    '</div>');
+});
+
+// Wordmark letters
+const MARK = "kicksart";
+$("mark").innerHTML = MARK.split("").map(ch => '<span class="m"><span>' + ch + '</span></span>').join("") + '<span class="base" id="base"></span>';
+
+/* ============ Easing + helpers ============ */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const P = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const E = {
+  inQuad: x => x * x,
+  outQuad: x => 1 - (1 - x) * (1 - x),
+  outCubic: x => 1 - Math.pow(1 - x, 3),
+  inOutCubic: x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2,
+  outExpo: x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x),
+  inExpo: x => x <= 0 ? 0 : Math.pow(2, 10 * x - 10),
+  inOutExpo: x => x <= 0 ? 0 : x >= 1 ? 1 : x < .5 ? Math.pow(2, 20 * x - 10) / 2 : (2 - Math.pow(2, -20 * x + 10)) / 2,
+  outBack: x => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+};
+function mixHex(a, b, k){
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round(lerp(pa >> 16, pb >> 16, k)), g = Math.round(lerp((pa >> 8) & 255, (pb >> 8) & 255, k)), bl = Math.round(lerp(pa & 255, pb & 255, k));
+  return "rgb(" + r + "," + g + "," + bl + ")";
+}
+function show(el, on){ el.style.visibility = on ? "visible" : "hidden"; }
+function showLayer(el, on){ el.style.display = on ? "block" : "none"; }
+function setDot(el, x, y, r, sx = 1, sy = 1, color){
+  el.style.transform = "translate(" + x + "px," + y + "px) scale(" + (r / 50 * sx) + "," + (r / 50 * sy) + ")";
+  if (color) el.style.background = color;
+}
+
+/* ============ Scene clock ============ */
+const SCENES = [[0,"01 — Point"],[1.5,"02 — Line"],[3.0,"03 — Form"],[4.5,"04 — Word"],[6.5,"05 — Colour"],[9.0,"06 — Anatomy"],[11.5,"07 — Impact"],[13.0,"08 — Mark"]];
+const FPS = 60;
+
+const outline = $("outline"), detail = $("detail"), revRect = $("revRect"), sweep = $("sweep");
+const wrap = $("shoeWrap"), shadow = $("shadow"), dot = $("dot"), dsh = $("dshadow"), cover = $("cover");
+const G = {}; GROUPS.forEach(g => G[g] = $("g-" + g));
+
+function render(t){
+  const W = innerWidth, H = innerHeight, vmin = Math.min(W, H);
+  const sw = Math.min(W * .92, vmin);
+  const u = sw / 600;                       // px per shoe unit
+  const sx = x => W / 2 + (x - 300) * u;    // shoe -> screen (untransformed)
+  const sy = y => H / 2 + (y - 150) * u;
+  const ground = sy(262);
+  const portrait = H > W;
+
+  /* HUD */
+  const f = Math.round(t * FPS), ss = Math.floor(f / FPS), ff = f % FPS;
+  $("tc").textContent = "TC 00:00:" + String(ss).padStart(2, "0") + ":" + String(ff).padStart(2, "0");
+  let sc = SCENES[0][1]; SCENES.forEach(s => { if (t >= s[0]) sc = s[1]; });
+  $("scene").textContent = sc;
+  const hudIn = E.outCubic(P(t, 0.05, 0.6));
+  $("hud").style.opacity = hudIn * (t > 13.2 ? lerp(1, .55, P(t, 13.2, 13.8)) : 1);
+  $("hud").style.color = (t >= 8.5 && t < 9.2) ? "#6A6862" : "";
+
+  /* ---------- 01 Point: the dot drops ---------- */
+  const r0 = vmin * 0.022;
+  const H0 = H * 0.62;
+  let h = 0, sqx = 1, sqy = 1, dotR = r0, dx = W / 2, dy, dotOn = t < 3.36;
+  if (t < 0.6){ const k = P(t, 0.12, 0.6); h = H0 * (1 - E.inQuad(k)); const s = k * k * .32; sqx = 1 - s * .5; sqy = 1 + s; }
+  else if (t < 0.68){ const s = Math.sin(Math.PI * P(t, .6, .68)); sqx = 1 + .65 * s; sqy = 1 - .45 * s; }
+  else if (t < 1.0){ const k = P(t, .68, 1.0); h = H * .13 * Math.sin(Math.PI * k); const s = Math.abs(Math.cos(Math.PI * k)) * .14; sqx = 1 - s * .5; sqy = 1 + s; }
+  else if (t < 1.05){ const s = Math.sin(Math.PI * P(t, 1.0, 1.05)); sqx = 1 + .3 * s; sqy = 1 - .22 * s; }
+  else if (t < 1.24){ h = H * .028 * Math.sin(Math.PI * P(t, 1.05, 1.24)); }
+  dy = ground - h - r0 * sqy;
+
+  // Pen: shrink then trace the outline
+  const drawK = E.inOutCubic(P(t, 1.55, 2.9));
+  if (t >= 1.45){
+    dotR = lerp(r0, vmin * .0068, E.inOutCubic(P(t, 1.45, 1.62)));
+    const L = outline.getTotalLength();
+    const pt = outline.getPointAtLength(drawK * L);
+    dx = sx(pt.x); dy = sy(pt.y);
+    sqx = sqy = 1;
+  }
+  // Fly into the heel as the brand dot
+  if (t >= 2.95){
+    const k = E.inOutCubic(P(t, 2.95, 3.36));
+    const x0 = sx(300), y0 = sy(262), x1 = sx(70), y1 = sy(150);
+    dx = lerp(x0, x1, k); dy = lerp(y0, y1, k) - Math.sin(Math.PI * k) * vmin * .16;
+    dotR = lerp(vmin * .0068, 10 * u, k);
+  }
+  show(dot, dotOn && t >= 0.12);
+  setDot(dot, dx, dy, dotR, sqx, sqy, "#111");
+  // Contact shadow under the bouncing dot
+  show(dsh, t < 1.6);
+  const shK = 1 - h / H0;
+  dsh.style.transform = "translate(" + (W / 2) + "px," + ground + "px) scale(" + (r0 * 2.6 * (.35 + .65 * shK) / 100) + ",1)";
+  dsh.style.opacity = (t < 0.12 ? 0 : shK) * (1 - P(t, 1.45, 1.6));
+
+  /* ---------- 02 Line / 03 Form: main shoe ---------- */
+  const shoeOn = (t >= 1.5 && t < 4.55) || (t >= 9.0 && t < 13.0);
+  showLayer($("shoeLayer"), shoeOn);
+  let rot = 0, lift = 0, tx = 0, skew = 0, scale = 1, blur = 0, shOp = 0, shSc = 1, shake = 0;
+  let explodeK = 0;
+  if (t < 4.6){
+    outline.style.strokeDashoffset = 1 - drawK;
+    outline.style.strokeDasharray = "1 1";
+    const dK = E.inOutCubic(P(t, 2.25, 3.05));
+    detail.style.strokeDasharray = "1 1";
+    detail.style.strokeDashoffset = 1 - dK;
+    const lineFade = 1 - P(t, 3.35, 3.75);
+    outline.style.opacity = lineFade; detail.style.opacity = lineFade * .9;
+    const fillK = E.inOutCubic(P(t, 3.0, 3.55));
+    revRect.setAttribute("width", fillK * 640);
+    sweep.setAttribute("x1", fillK * 620 - 20); sweep.setAttribute("x2", fillK * 620 - 20);
+    sweep.style.opacity = fillK > 0 && fillK < 1 ? 1 : 0;
+    $("heelDot").style.opacity = t >= 3.36 ? 1 : 0;
+    const tk = E.outBack(P(t, 3.55, 4.1));
+    rot = -8 * tk; lift = -sw * .035 * tk;
+    shOp = E.outCubic(P(t, 3.15, 3.6)); shSc = 1 - .14 * tk;
+    const ek = E.inExpo(P(t, 4.16, 4.5));
+    tx = ek * W * 1.25; skew = -16 * ek; blur = ek * 10;
+    shOp *= 1 - ek;
+  } else {
+    // Anatomy + impact state
+    outline.style.opacity = 0; detail.style.opacity = 0; sweep.style.opacity = 0;
+    revRect.setAttribute("width", 700);
+    $("heelDot").style.opacity = 1;
+    const baseScale = portrait ? .72 : .84;
+    rot = lerp(-4, 1, E.inOutCubic(P(t, 9.0, 11.5)));
+    scale = baseScale;
+    explodeK = 1;
+    shOp = 1;
+    // Impact: parts slam back
+    if (t >= 11.45){
+      const back = E.inExpo(P(t, 11.45, 11.75));
+      explodeK = 1 - back;
+      const hitK = P(t, 11.75, 12.05);
+      shake = t >= 11.75 ? Math.sin(hitK * 38) * Math.pow(1 - hitK, 2) * vmin * .018 : 0;
+      const push = E.inOutCubic(P(t, 11.8, 12.95));
+      scale = lerp(baseScale, baseScale * 1.42, push) * (t >= 11.75 ? 1 + .05 * Math.sin(Math.PI * P(t, 11.75, 11.95)) : 1);
+      rot = lerp(1, -7, push);
+    }
+  }
+  wrap.style.transform = "translate(calc(-50% + " + (tx + shake) + "px), calc(-50% + " + (lift + shake * .4) + "px)) rotate(" + rot + "deg) skewX(" + skew + "deg) scale(" + scale + ")";
+  wrap.style.filter = blur > .2 ? "blur(" + blur + "px)" : "none";
+  // Ground line under the scaled shoe (transform-origin sits 36 units below centre)
+  shadow.style.top = (H / 2 + 36 * u + (262 - 186) * u * scale + sw * .012) + "px";
+  shadow.style.transform = "translate(calc(-50% + " + (tx + shake) + "px), -50%) scale(" + (shSc * scale) + "," + scale + ")";
+  shadow.style.opacity = shOp;
+
+  // Exploded parts + labels
+  GROUPS.forEach((g, i) => {
+    let off = 0;
+    if (t >= 9.0){
+      const k = E.outExpo(P(t, 9.22 + i * .05, 9.95 + i * .05));
+      const float = Math.sin((t - 9.9) * 2.4 + i * 1.3) * 3 * P(t, 9.9, 10.4);
+      off = (EXPLODE[g] * k + float) * explodeK;
+    }
+    G[g].setAttribute("transform", "translate(0," + off + ")");
+    G[g].dataset.off = off;
+  });
+  LABELS.forEach((L, i) => {
+    const grp = $("lab" + i);
+    const off = +G[L[0]].dataset.off || 0;
+    const k = E.outExpo(P(t, 9.75 + i * .12, 10.35 + i * .12));
+    const out = 1 - P(t, 11.42, 11.52);
+    const lx = +grp.dataset.lx;
+    grp.setAttribute("transform", "translate(0," + off + ")");
+    const ll = grp.querySelector(".ll");
+    ll.setAttribute("x2", lerp(L[1], lx, k));
+    const lt = grp.querySelector(".lt");
+    lt.setAttribute("opacity", P(t, 10.05 + i * .12, 10.35 + i * .12) * out);
+    lt.setAttribute("transform", "translate(" + ((1 - k) * 14 * L[3]) + ",0)");
+    grp.setAttribute("opacity", (t >= 9.6 ? 1 : 0) * out);
+  });
+
+  /* ---------- 04 Word ---------- */
+  showLayer($("typeLayer"), t >= 4.4 && t < 6.85);
+  WORDS.forEach((w, i) => {
+    const el = $("w" + i), span = el.firstChild;
+    const a = w[1], b = i < WORDS.length - 1 ? WORDS[i + 1][1] : 99;
+    const inK = E.outExpo(P(t, a, a + .32));
+    const outK = E.inExpo(P(t, b, b + .2));
+    span.style.transform = "translateY(" + ((1 - inK) * 108 - outK * 108) + "%)";
+    show(el, t >= a - .01 && t < b + .22);
+    if (i === 3){
+      const wk = E.inOutExpo(P(t, 6.1, 6.45));
+      el.style.fontStretch = lerp(70, 125, wk) + "%";
+      el.style.letterSpacing = lerp(-.03, .02, wk) + "em";
+    }
+  });
+  const wcap = $("wcap");
+  wcap.style.top = (H / 2 + Math.min(W * .16, H * .26) * .58) + "px";
+  wcap.style.opacity = P(t, 6.15, 6.35);
+
+  /* ---------- 05 Colour ---------- */
+  showLayer($("cwLayer"), t >= 6.5 && t < 9.34);
+  CW_ORDER.forEach((key, i) => {
+    const el = $("cw" + i), s = CW_START[i];
+    const nxt = i < 4 ? CW_START[i + 1] + .34 : 9.34;
+    show(el, t >= s && t < nxt);
+    const k = E.inOutExpo(P(t, s, s + .34));
+    let clip = "none";
+    if (i === 0) clip = "circle(" + (k * 72) + "% at 50% 50%)";
+    if (i === 1) clip = "inset(0 " + (50 * (1 - k)) + "% 0 " + (50 * (1 - k)) + "%)";
+    if (i === 2) clip = "inset(" + (100 * (1 - k)) + "% 0 0 0)";
+    if (i === 3){ const a = lerp(-40, 140, k); clip = "polygon(0% 0%, " + a + "% 0%, " + (a - 40) + "% 100%, 0% 100%)"; }
+    if (i === 4){
+      clip = "circle(" + (k * 145) + "% at 100% 100%)";
+      if (t >= 9.0){ const c = E.inOutExpo(P(t, 9.0, 9.34)); clip = "circle(" + ((1 - c) * 72) + "% at 50% 50%)"; }
+    }
+    el.style.clipPath = clip;
+    const local = t - s;
+    const pop = E.outExpo(P(t, s, s + .55));
+    const shoe = el.querySelector(".shoe");
+    shoe.style.transform = "translate(calc(-50% + " + (-local * vmin * .05) + "px), calc(-50% - " + (sw * .03) + "px)) rotate(-8deg) scale(" + lerp(1.14, 1, pop) + ")";
+    el.querySelector(".name").style.transform = "translate(calc(-50% + " + (local * vmin * .09 - vmin * .03) + "px), -54%)";
+    const csh = el.querySelector(".cwsh");
+    csh.style.top = (ground + sw * .01) + "px";
+    csh.style.opacity = i === 4 ? .0 : .9;
+  });
+
+  /* ---------- 07 Impact -> 08 Mark: the dot takes over ---------- */
+  const diag = Math.hypot(W, H);
+  const markFS = parseFloat(getComputedStyle($("mark")).fontSize);
+  const ms = $("mark").querySelectorAll(".m"), lm = ms[ms.length - 1].getBoundingClientRect();
+  const fr = markFS * .085;
+  const baseline = lm.top + markFS * .08 + (markFS * .82 - (MET.a + MET.d) * markFS) / 2 + MET.a * markFS;
+  const fx = lm.right + markFS * .045 + fr, fy = baseline - fr;
+  show(cover, t >= 12.5);
+  if (t >= 12.5 && t < 13.0){
+    const hd = $("heelDot").getBoundingClientRect();
+    const k = E.inExpo(P(t, 12.5, 12.95));
+    setDot(cover, hd.left + hd.width / 2, hd.top + hd.height / 2, lerp(hd.width / 2, diag, k), 1, 1, "#111");
+  } else if (t >= 13.0){
+    const k = E.outExpo(P(t, 13.0, 13.5));
+    const pop = t >= 13.5 ? 1 + .35 * Math.sin(Math.PI * P(t, 13.5, 13.68)) : 1;
+    setDot(cover, fx, fy, lerp(diag, fr, k) * pop, 1, 1, mixHex("#111111", "#2340FF", P(t, 13.22, 13.55)));
+  }
+  show($("logoLayer"), t >= 12.9);
+  [...$("mark").querySelectorAll(".m span")].forEach((s, i) => {
+    const k = E.outExpo(P(t, 13.08 + i * .045, 13.6 + i * .045));
+    s.style.transform = "translateY(" + ((1 - k) * 112) + "%)";
+  });
+  const tag = $("tag");
+  const mrect = $("mark").getBoundingClientRect();
+  const tk2 = E.outCubic(P(t, 13.85, 14.4));
+  tag.style.top = (mrect.bottom + vmin * .035) + "px";
+  tag.style.transform = "translate(-50%," + ((1 - tk2) * vmin * .02) + "px)";
+  tag.style.opacity = tk2;
+  $("url").style.opacity = E.outCubic(P(t, 14.1, 14.6));
+}
+
+// Font metrics (per 1em) for placing the logo dot on the baseline
+const MET = { a: .9, d: .21 };
+function measureFont(){
+  const c = document.createElement("canvas").getContext("2d");
+  c.font = '800 100px "Archivo"';
+  const m = c.measureText("k");
+  if (m.fontBoundingBoxAscent){ MET.a = m.fontBoundingBoxAscent / 100; MET.d = m.fontBoundingBoxDescent / 100; }
+}
+window.render = render;
+window.ready = document.fonts.ready.then(() => Promise.all([
+  document.fonts.load('900 100px "Archivo"'), document.fonts.load('800 100px "Archivo"'),
+  document.fonts.load('500 20px "Archivo"'), document.fonts.load('400 12px "JetBrains Mono"')
+])).then(() => { measureFont(); render(0); return true; });
+
+// Live preview when opened directly in a browser
+if (!/[?&]capture/.test(location.search)){
+  let t0 = null;
+  window.ready.then(() => {
+    const loop = ts => { if (t0 === null) t0 = ts; render(((ts - t0) / 1000) % 15); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
