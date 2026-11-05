@@ -335,7 +335,7 @@ p{margin:0}
 <body>
 
 <section class="intro" id="intro" aria-label="Kicksart launch film">
-  <video id="intro-video" src="media/kicksart-film-1080.mp4" poster="media/kicksart-intro-poster.jpg" muted playsinline preload="auto" aria-label="Kicksart launch film: a dot draws the shoe, the colourways change, and the dot becomes the logo"></video>
+  <video id="intro-video" src="media/kicksart-film-1080.mp4" poster="media/kicksart-intro-poster.jpg" autoplay muted playsinline preload="auto" disablepictureinpicture aria-label="Kicksart launch film: a dot draws the shoe, the colourways change, and the dot becomes the logo"></video>
   <button class="pill intro-play" id="intro-play" type="button" hidden>
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>Play film
   </button>
@@ -868,7 +868,8 @@ const GALLERY = [
   }
   iv.addEventListener("ended", () => { if (!autoDone && scrollY < intro.offsetHeight * .5) enterSite(); });
   iv.addEventListener("timeupdate", () => { $("intro-prog").style.transform = "scaleX(" + (iv.currentTime / (iv.duration || 11.5)) + ")"; });
-  $("skip").addEventListener("click", () => { iv.pause(); enterSite(); });
+  let skipped = false;
+  $("skip").addEventListener("click", () => { skipped = true; iv.pause(); enterSite(); });
   $("snd").addEventListener("click", () => {
     iv.muted = !iv.muted;
     $("snd").setAttribute("aria-pressed", String(!iv.muted));
@@ -877,21 +878,29 @@ const GALLERY = [
     if (iv.paused && !iv.ended) iv.play().catch(() => {});
   });
   $("intro-play").addEventListener("click", () => { $("intro-play").hidden = true; iv.currentTime = 0; iv.play().catch(() => {}); });
-  function startIntro(){
-    if (reduce){ $("intro-play").hidden = false; return; }      // no autoplay for reduced motion
+  // Autoplay: start as soon as the page opens. Browsers only allow this muted, so the film starts muted.
+  iv.muted = true; iv.defaultMuted = true;
+  function tryPlay(){
+    if (skipped || iv.ended || !iv.paused) return;
     const p = iv.play();
     if (p && p.catch) p.catch(() => { $("intro-play").hidden = false; });
   }
-  // Pause when scrolled away, resume when it comes back into view
+  iv.addEventListener("playing", () => { $("intro-play").hidden = true; });
+  ["loadeddata", "canplay"].forEach(ev => iv.addEventListener(ev, tryPlay));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && scrollY < intro.offsetHeight * .5) tryPlay(); });
+  // Backup for devices that block autoplay (e.g. low-power mode): start on the first tap, scroll or key
+  const firstTouch = () => { if (scrollY < intro.offsetHeight * .5) tryPlay(); ["pointerdown", "touchstart", "keydown", "wheel"].forEach(ev => removeEventListener(ev, firstTouch)); };
+  ["pointerdown", "touchstart", "keydown", "wheel"].forEach(ev => addEventListener(ev, firstTouch, { passive: true }));
+  // Pause when scrolled away, carry on when it comes back into view
   if ("IntersectionObserver" in window){
     new IntersectionObserver(([en]) => {
-      if (!en.isIntersecting || en.intersectionRatio < .25){ if (!iv.paused) iv.pause(); }
-      else if (iv.paused && !iv.ended && autoDone && iv.currentTime > 0) iv.play().catch(() => {});
+      if (en.isIntersecting && en.intersectionRatio >= .25) tryPlay();
+      else if (!iv.paused) iv.pause();
     }, { threshold: [0, .25, .5] }).observe(intro);
   }
   h1Focusable();
   function h1Focusable(){ const h = $("home").querySelector("h1"); h.setAttribute("tabindex", "-1"); h.style.outline = "none"; }
-  startIntro();
+  tryPlay();
 
   /* ================= Gallery sphere ================= */
   const stage = $("stage"), track = $("track");
