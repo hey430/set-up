@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kicksart Gallery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: light gallery-wall intro, then a dark pinned section where the photos orbit on a sphere (text left, sphere right). */
+:root{
+  --paper:#F2F1ED;     /* gallery wall */
+  --ink:#141414;
+  --muted:#6E6C66;
+  --night:#0A0A0A;     /* the dark room */
+  --night-2:#151515;
+  --mist:#A9A7A0;      /* text on dark */
+  --ember:#EA5A27;     /* warm light, as in the reel */
+  --lagoon:#2AA7B4;
+  --font-display:"Archivo","Arial Black",Arial,sans-serif;
+  --font-body:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --gl:max(16px, env(safe-area-inset-left, 0px));
+  --gr:max(16px, env(safe-area-inset-right, 0px));
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+.wrap{max-width:1320px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr)}
+.mono{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ---------- Header + intro (light) ---------- */
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-block:22px}
+.logo{font-family:var(--font-display);font-weight:800;font-stretch:108%;font-size:24px;letter-spacing:-.04em;text-decoration:none;color:var(--ink)}
+.logo i{font-style:normal;display:inline-block;width:.2em;height:.2em;margin-left:.04em;border-radius:50%;background:currentColor}
+.top nav{display:flex;gap:28px}
+.top nav a{text-decoration:none;font-weight:600;font-size:15px;color:var(--ink);padding-block:4px;border-bottom:1.5px solid transparent}
+.top nav a:hover,.top nav a[aria-current]{border-color:var(--ink)}
+@media (max-width:640px){.top nav a:not([aria-current]){display:none}}
+
+.intro .wrap{display:grid;grid-template-columns:1.4fr 1fr;gap:32px 64px;align-items:end;padding-block:clamp(48px,9vw,120px) 56px}
+.intro h1{font-family:var(--font-display);font-weight:800;font-stretch:104%;font-size:clamp(46px,8.4vw,128px);line-height:.88;letter-spacing:-.045em}
+.intro h1 i{font-style:normal;display:inline-block;width:.17em;height:.17em;border-radius:50%;background:var(--ink);margin-left:.03em}
+.intro aside{display:grid;gap:18px;max-width:38ch;color:var(--muted)}
+.intro aside .mono{color:var(--ink)}
+.cue{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:600}
+.cue span{display:inline-grid;place-items:center;width:34px;height:34px;border:1.5px solid var(--ink);border-radius:50%;animation:nudge 1.8s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(4px)}}
+@media (prefers-reduced-motion: reduce){.cue span{animation:none}}
+@media (max-width:820px){.intro .wrap{grid-template-columns:1fr}}
+
+/* ---------- Gallery (dark, pinned) ---------- */
+.gallery{background:var(--night);color:#EDEBE6;color-scheme:dark}
+.g-track{position:relative;height:320vh}
+.g-sticky{position:sticky;top:0;height:100vh;height:100dvh;overflow:hidden}
+.g-sticky::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(38% 46% at 66% 52%, rgba(234,90,39,.13), rgba(234,90,39,0) 70%),
+             radial-gradient(30% 36% at 74% 40%, rgba(42,167,180,.08), rgba(42,167,180,0) 70%)}
+.g-grid{position:relative;height:100%;display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:24px;max-width:1440px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr)}
+.g-copy{align-self:center;display:grid;gap:22px;z-index:2;min-width:0}
+.g-copy .eyebrow{color:var(--mist)}
+.g-copy h2{font-family:var(--font-display);font-weight:800;font-stretch:104%;font-size:clamp(44px,6vw,88px);line-height:.9;letter-spacing:-.045em}
+.g-copy p{color:var(--mist);max-width:34ch}
+.now{display:grid;gap:4px;padding-top:18px;border-top:1px solid #2A2A2A;min-height:76px}
+.now .mono{color:var(--mist)}
+.now strong{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.prog{height:2px;background:#262626;position:relative;overflow:hidden}
+.prog i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(0);background:var(--ember)}
+.hint{display:flex;gap:18px;color:#6F6D67}
+
+.stage{position:relative;min-width:0;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.stage.dragging{cursor:grabbing}
+.card{position:absolute;left:50%;top:50%;padding:0;border:0;background:var(--night-2);border-radius:10px;overflow:hidden;cursor:pointer;
+  box-shadow:0 18px 40px rgba(0,0,0,.55);outline-offset:4px;will-change:transform,opacity,filter}
+.card img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.card:hover::after,.card:focus-visible::after{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}
+
+@media (max-width:860px){
+  .g-grid{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:0}
+  .g-copy{align-self:start;padding-top:max(28px, env(safe-area-inset-top, 0px));gap:12px}
+  .g-copy h2{font-size:clamp(40px,12vw,64px)}
+  .g-copy p,.hint{display:none}
+  .now{padding-top:10px;min-height:0}
+  .g-sticky::before{background:radial-gradient(60% 40% at 50% 62%, rgba(234,90,39,.14), rgba(234,90,39,0) 70%)}
+}
+
+/* ---------- Lightbox ---------- */
+.lb{position:fixed;inset:0;z-index:100;display:grid;place-items:center;color:#EDEBE6}
+.lb-bg{position:absolute;inset:0;background:rgba(6,6,6,.94);opacity:0;transition:opacity .4s ease}
+.lb.open .lb-bg{opacity:1}
+.lb-fig{position:absolute;left:0;top:0;margin:0}
+.lb-img{position:absolute;left:0;top:0;max-width:none;border-radius:12px;object-fit:cover;transform-origin:0 0;box-shadow:0 30px 80px rgba(0,0,0,.6);transition:opacity .18s ease}
+.lb-cap{position:absolute;left:0;top:0;display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:6px 24px;opacity:0;transform:translateY(8px);transition:opacity .35s ease .15s, transform .35s ease .15s}
+.lb.open .lb-cap{opacity:1;transform:none}
+.lb-cap strong{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.lb-cap .mono{color:var(--mist)}
+.lb-cap p{grid-column:1/-1;color:var(--mist);font-size:15px;max-width:60ch}
+.lb-btn{position:absolute;z-index:2;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:1px solid #3A3A3A;background:rgba(20,20,20,.7);cursor:pointer;opacity:0;transition:opacity .3s ease .1s, background .2s ease}
+.lb.open .lb-btn{opacity:1}
+.lb-btn:hover{background:#2A2A2A}
+.lb-close{top:calc(18px + env(safe-area-inset-top, 0px));right:calc(18px + env(safe-area-inset-right, 0px))}
+.lb-prev{left:calc(18px + env(safe-area-inset-left, 0px));top:50%;margin-top:-24px}
+.lb-next{right:calc(18px + env(safe-area-inset-right, 0px));top:50%;margin-top:-24px}
+.lb-count{position:absolute;left:calc(22px + env(safe-area-inset-left, 0px));top:calc(32px + env(safe-area-inset-top, 0px));color:var(--mist);opacity:0;transition:opacity .3s ease .1s}
+.lb.open .lb-count{opacity:1}
+@media (max-width:640px){.lb-prev,.lb-next{top:auto;bottom:calc(18px + env(safe-area-inset-bottom, 0px));margin-top:0}}
+@media (prefers-reduced-motion: reduce){.lb-bg,.lb-cap,.lb-btn,.lb-count,.lb-img{transition:none}}
+
+/* ---------- Outro (light) ---------- */
+.outro .wrap{display:flex;justify-content:space-between;align-items:end;gap:24px 48px;flex-wrap:wrap;padding-block:80px 40px}
+.outro h2{font-family:var(--font-display);font-weight:800;font-size:clamp(32px,5vw,64px);line-height:.95;letter-spacing:-.04em;max-width:16ch}
+.btn{display:inline-flex;align-items:center;min-height:50px;padding:0 24px;border-radius:999px;background:var(--ink);color:var(--paper);text-decoration:none;font-weight:600}
+.foot .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:22px 32px;border-top:1px solid #D6D4CD;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="kicksart home">kicksart<i></i></a>
+    <nav aria-label="Main">
+      <a href="#top">Shop</a>
+      <a href="#top">Drops</a>
+      <a href="#gallery" aria-current="page">Gallery</a>
+      <a href="#top">Story</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="intro">
+    <div class="wrap">
+      <h1>Every pair is a canvas<i></i></h1>
+      <aside>
+        <span class="mono">SS27 · Drop 01 · Five colourways</span>
+        <p>Lagoon, Bone, Ember, Moss and Ink. Shot in one room, under one light.</p>
+        <a class="cue" href="#gallery"><span aria-hidden="true">↓</span>Scroll to the gallery</a>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gallery" id="gallery" aria-labelledby="g-title">
+    <div class="g-track" id="track">
+      <div class="g-sticky">
+        <div class="g-grid">
+          <div class="g-copy">
+            <span class="eyebrow mono" id="g-count">Gallery · 17 frames</span>
+            <h2 id="g-title">Gallery</h2>
+            <p>Scroll or drag to turn it. Click any frame to see it up close.</p>
+            <div class="now" aria-live="polite">
+              <span class="mono" id="now-code">KA-01 · Lagoon</span>
+              <strong id="now-title">Lagoon</strong>
+            </div>
+            <div class="prog" aria-hidden="true"><i id="prog"></i></div>
+            <div class="hint mono"><span>Drag · spin</span><span>Click · enlarge</span><span>Esc · close</span></div>
+          </div>
+          <div class="stage" id="stage" role="list" aria-label="Kicksart photos"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="outro">
+    <div class="wrap">
+      <h2>Drop 01 lands Saturday, 21 November.</h2>
+      <a class="btn" href="#top">Back to the top</a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap mono"><span>© 2026 Kicksart</span><span>Wear the art.</span></div></footer>
+
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-bg" id="lb-bg"></div>
+  <span class="lb-count mono" id="lb-count">01 / 17</span>
+  <figure class="lb-fig">
+    <img class="lb-img" id="lb-img" alt="">
+    <figcaption class="lb-cap" id="lb-cap">
+      <strong id="lb-title"></strong>
+      <span class="mono" id="lb-code"></span>
+      <p id="lb-note"></p>
+    </figcaption>
+  </figure>
+  <button class="lb-btn lb-close" id="lb-close" type="button" aria-label="Close">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.6"/></svg>
+  </button>
+  <button class="lb-btn lb-prev" id="lb-prev" type="button" aria-label="Previous photo">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2L4 8l6 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  </button>
+  <button class="lb-btn lb-next" id="lb-next" type="button" aria-label="Next photo">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+  </button>
+</div>
+
+<script>
+(function(){
+  // [file, aspect (w/h), title, code line, note]
+  const ITEMS = [
+    ["lagoon",       1100/721, "Lagoon",              "KA-01 · Lagoon · Hero colourway",  "The first colour of the drop. One tone from heel to toe, with the black signature dot on the heel."],
+    ["ember",        1100/587, "Ember",               "KA-03 · Ember · Colourway",        "Burnt orange with a gum-toned sole. The loudest pair in the run."],
+    ["anatomy",      1100/592, "Anatomy",             "KA-05 · Ink · Exploded view",      "Upper, footbed, midsole and outsole pulled apart. Every layer is cut and bonded by hand."],
+    ["bone-heel",     880/1100,"Bone, heel",          "KA-02 · Bone · Detail",            "Raw cream knit against a gum outsole. The signature dot sits where the heel tab would be."],
+    ["moss",         1100/721, "Moss",                "KA-04 · Moss · Colourway",         "Muted green, tone on tone. Made for city parks and wet pavements."],
+    ["sketch",       1100/697, "First line",          "Study · Line drawing",             "Every pair starts as one continuous line. This is the drawing the reel opens on."],
+    ["ink-close",    1100/642, "Ink, up close",       "KA-05 · Ink · Detail",             "Triple black, with the sculpted cage across the upper."],
+    ["lagoon-heel",   880/1100,"Lagoon, heel",        "KA-01 · Lagoon · Detail",          "The signature dot: the mark that opens and closes every Kicksart film."],
+    ["canvas",       1100/536, "Every pair is a canvas", "Film still · 00:05",            "From the launch reel. The words land on the beat behind the shoe."],
+    ["bone",         1100/721, "Bone",                "KA-02 · Bone · Colourway",         "Undyed cream with a gum sole. It wears in, not out."],
+    ["sphere",       1100/1100,"The dot",             "Film still · 00:09",               "The heel dot grows, swallows the frame, and shrinks back into the full stop of the wordmark."],
+    ["ember-detail",  880/1100,"Ember, midfoot",      "KA-03 · Ember · Detail",           "Suede panels behind the cage. Brushed by hand before boxing."],
+    ["ink",          1100/721, "Ink",                 "KA-05 · Ink · Colourway",          "The one you wear with everything."],
+    ["moss-laces",   1100/1100,"Moss, laces",         "KA-04 · Moss · Detail",            "Tonal waxed laces and a padded tongue."],
+    ["first-colour", 1100/697, "First colour",        "Study · Colour pass",              "The moment the line drawing fills with Lagoon."],
+    ["lagoon-toe",    880/1100,"Lagoon, toe box",     "KA-01 · Lagoon · Detail",          "A rounded toe and a full-length foam midsole."],
+    ["ink-heel",      880/1100,"Ink, heel",           "KA-05 · Ink · Detail",             "Black on black. The dot is the only shine."]
+  ];
+  const N = ITEMS.length;
+  const pad2 = n => String(n).padStart(2, "0");
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), track = $("track");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Points spread evenly over a sphere (Fibonacci lattice)
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const pts = ITEMS.map((_, i) => {
+    const y = 1 - (i + .5) / N * 2, r = Math.sqrt(1 - y * y), a = i * GOLD;
+    return { x: Math.cos(a) * r, y, z: Math.sin(a) * r };
+  });
+
+  const cards = ITEMS.map((it, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "card";
+    b.setAttribute("role", "listitem");
+    b.setAttribute("aria-label", it[2] + ", " + it[3] + ". Open larger");
+    b.innerHTML = '<img src="img/gallery/' + it[0] + '.jpg" alt="" loading="eager" decoding="async" draggable="false">';
+    b.dataset.i = i;
+    stage.appendChild(b);
+    return b;
+  });
+
+  /* ---------- Sphere motion ---------- */
+  let yawAuto = 0, yawDrag = 0, pitchDrag = -.18, vYaw = 0, vPitch = 0;
+  let dragging = false, paused = false, R = 200, cw = 120, sp = 0;
+  let front = -1;
+
+  function size(){
+    const r = stage.getBoundingClientRect();
+    const narrow = innerWidth < 860;
+    R = Math.min(r.width, r.height) * (narrow ? .36 : .37);
+    cw = R * (narrow ? .58 : .5);
+    cards.forEach((c, i) => {
+      const a = ITEMS[i][1];
+      c.style.width = (cw * Math.sqrt(a)) + "px";
+      c.style.height = (cw / Math.sqrt(a)) + "px";
+      c.style.marginLeft = (-cw * Math.sqrt(a) / 2) + "px";
+      c.style.marginTop = (-cw / Math.sqrt(a) / 2) + "px";
+    });
+  }
+
+  function scrollProgress(){
+    const r = track.getBoundingClientRect();
+    return Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+  }
+
+  function place(){
+    sp = scrollProgress();
+    $("prog").style.transform = "scaleX(" + sp + ")";
+    const yaw = yawAuto + yawDrag + sp * Math.PI * 1.8;
+    const pitch = pitchDrag + Math.sin(sp * Math.PI) * .22;
+    const spread = .86 + .14 * (1 - Math.pow(1 - Math.min(1, sp * 2.5), 3));
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), spn = Math.sin(pitch);
+    const F = 3.4;
+    let best = -2, bestI = 0;
+    pts.forEach((p, i) => {
+      const x1 = p.x * cy + p.z * sy, z1 = -p.x * sy + p.z * cy;
+      const y2 = p.y * cp - z1 * spn, z2 = p.y * spn + z1 * cp;
+      const d = (z2 + 1) / 2;                       // 0 = back, 1 = front
+      const s = F / (F - z2);
+      const X = x1 * R * spread * s, Y = y2 * R * spread * s;
+      const sc = s * (.6 + .4 * d);
+      const c = cards[i];
+      c.style.transform = "translate3d(" + X.toFixed(1) + "px," + Y.toFixed(1) + "px,0) scale(" + sc.toFixed(3) + ")";
+      c.style.opacity = (.1 + .9 * Math.pow(d, 1.6)).toFixed(3);
+      c.style.filter = "brightness(" + (.32 + .68 * d).toFixed(3) + ")";
+      c.style.zIndex = Math.round(d * 1000);
+      c.style.pointerEvents = d > .35 ? "auto" : "none";
+      c.tabIndex = d > .35 ? 0 : -1;
+      if (z2 > best){ best = z2; bestI = i; }
+    });
+    if (bestI !== front){
+      front = bestI;
+      $("now-code").textContent = ITEMS[front][3].split(" · ").slice(0, 2).join(" · ");
+      $("now-title").textContent = ITEMS[front][2];
+    }
+  }
+
+  let last = performance.now();
+  function tick(now){
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!paused){
+      if (!dragging){
+        if (!reduce) yawAuto += dt * .14;
+        yawDrag += vYaw; pitchDrag += vPitch;
+        vYaw *= .93; vPitch *= .9;
+        if (Math.abs(vYaw) < 1e-4) vYaw = 0;
+      }
+      pitchDrag = Math.max(-.7, Math.min(.7, pitchDrag));
+      place();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Drag to spin; a press that barely moves counts as a click on the card under it
+  let sx = 0, sy0 = 0, lx = 0, ly = 0, moved = 0, downCard = null, pid = null;
+  stage.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    pid = e.pointerId; sx = lx = e.clientX; sy0 = ly = e.clientY; moved = 0;
+    downCard = e.target.closest(".card");
+    dragging = true; vYaw = vPitch = 0;
+    stage.setPointerCapture(pid);
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!dragging || e.pointerId !== pid) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    moved = Math.max(moved, Math.hypot(e.clientX - sx, e.clientY - sy0));
+    if (moved > 6){
+      stage.classList.add("dragging");
+      yawDrag += dx * .006; pitchDrag -= dy * .004;
+      vYaw = dx * .006; vPitch = -dy * .004;
+    }
+  });
+  const end = e => {
+    if (!dragging || e.pointerId !== pid) return;
+    dragging = false; stage.classList.remove("dragging");
+    if (reduce){ vYaw = vPitch = 0; }
+    if (moved <= 6 && downCard) open(+downCard.dataset.i);
+    downCard = null;
+  };
+  stage.addEventListener("pointerup", end);
+  stage.addEventListener("pointercancel", e => { dragging = false; stage.classList.remove("dragging"); downCard = null; });
+  // Keyboard: Enter/Space on a focused card
+  stage.addEventListener("click", e => { if (e.detail === 0){ const c = e.target.closest(".card"); if (c) open(+c.dataset.i); } });
+
+  /* ---------- Lightbox ---------- */
+  const lb = $("lb"), img = $("lb-img"), cap = $("lb-cap");
+  let cur = 0, opener = null, busy = false;
+
+  function target(i){
+    const a = ITEMS[i][1];
+    const narrow = innerWidth < 640;
+    const maxW = Math.min(1180, innerWidth - (narrow ? 32 : 180));
+    const maxH = innerHeight - (narrow ? 230 : 210);
+    let w = maxW, h = w / a;
+    if (h > maxH){ h = maxH; w = h * a; }
+    return { w, h, x: (innerWidth - w) / 2, y: Math.max(narrow ? 76 : 70, (innerHeight - h - 96) / 2) };
+  }
+  function fill(i){
+    const it = ITEMS[i];
+    img.src = "img/gallery/" + it[0] + ".jpg";
+    img.alt = it[2] + ". " + it[4];
+    $("lb-title").textContent = it[2];
+    $("lb-code").textContent = it[3];
+    $("lb-note").textContent = it[4];
+    $("lb-count").textContent = pad2(i + 1) + " / " + pad2(N);
+  }
+  function layout(i){
+    const t = target(i);
+    Object.assign(img.style, { width: t.w + "px", height: t.h + "px", left: t.x + "px", top: t.y + "px" });
+    Object.assign(cap.style, { left: t.x + "px", top: (t.y + t.h + 18) + "px", width: t.w + "px" });
+    return t;
+  }
+  function flipFrom(card, t){
+    const r = card.getBoundingClientRect();
+    img.style.transition = "none";
+    img.style.transform = "translate(" + (r.left - t.x) + "px," + (r.top - t.y) + "px) scale(" + (r.width / t.w) + "," + (r.height / t.h) + ")";
+    img.getBoundingClientRect();
+    img.style.transition = reduce ? "none" : "transform .6s cubic-bezier(.2,.8,.2,1), opacity .18s ease";
+    img.style.transform = "none";
+  }
+  function open(i){
+    if (busy) return;
+    cur = i; opener = cards[i]; paused = true;
+    fill(i);
+    lb.hidden = false;
+    document.documentElement.style.overflow = "hidden";
+    const t = layout(i);
+    flipFrom(opener, t);
+    requestAnimationFrame(() => lb.classList.add("open"));
+    opener.style.visibility = "hidden";
+    $("lb-close").focus({ preventScroll: true });
+  }
+  function close(){
+    if (lb.hidden || busy) return;
+    busy = true;
+    const card = cards[cur];
+    const t = target(cur), r = card.getBoundingClientRect();
+    lb.classList.remove("open");
+    img.style.transition = reduce ? "none" : "transform .5s cubic-bezier(.5,0,.2,1)";
+    img.style.transform = "translate(" + (r.left - t.x) + "px," + (r.top - t.y) + "px) scale(" + (r.width / t.w) + "," + (r.height / t.h) + ")";
+    const done = () => {
+      lb.hidden = true; busy = false;
+      cards.forEach(c => c.style.visibility = "");
+      document.documentElement.style.overflow = "";
+      paused = false; last = performance.now();
+      (cards[cur] || opener).focus({ preventScroll: true });
+    };
+    if (reduce) done(); else setTimeout(done, 500);
+  }
+  function go(step){
+    if (busy) return;
+    cards[cur].style.visibility = "";
+    cur = (cur + step + N) % N;
+    cards[cur].style.visibility = "hidden";
+    img.style.transition = "opacity .16s ease";
+    img.style.opacity = 0;
+    setTimeout(() => {
+      fill(cur); layout(cur);
+      img.style.transform = "none";
+      const show = () => { img.style.opacity = 1; };
+      if (img.complete) show(); else img.onload = show;
+    }, reduce ? 0 : 160);
+  }
+  $("lb-close").addEventListener("click", close);
+  $("lb-bg").addEventListener("click", close);
+  $("lb-prev").addEventListener("click", () => go(-1));
+  $("lb-next").addEventListener("click", () => go(1));
+  addEventListener("keydown", e => {
+    if (lb.hidden) return;
+    if (e.key === "Escape") close();
+    if (e.key === "ArrowRight") go(1);
+    if (e.key === "ArrowLeft") go(-1);
+    if (e.key === "Tab"){ // keep focus inside the viewer
+      const f = [$("lb-close"), $("lb-prev"), $("lb-next")];
+      const k = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(k + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+    }
+  });
+  // Swipe between photos on touch screens
+  let tx0 = null;
+  img.addEventListener("pointerdown", e => { tx0 = e.clientX; });
+  img.addEventListener("pointerup", e => { if (tx0 === null) return; const d = e.clientX - tx0; tx0 = null; if (Math.abs(d) > 40) go(d < 0 ? 1 : -1); });
+  addEventListener("resize", () => { size(); if (!lb.hidden){ layout(cur); img.style.transform = "none"; } });
+
+  size(); place(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
