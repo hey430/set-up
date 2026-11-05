@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kicksart Store</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: warm backdrop from the film; hero (copy + film), colourway ribbon, shop grid with one featured pair,
+   dark pinned gallery sphere, ordering steps, FAQ. Cart is a right-hand drawer that ends on WhatsApp. */
+:root{
+  --paper:#E7E0D6;     /* the film's backdrop */
+  --paper-2:#EFEAE2;
+  --card:#E9E2D8;
+  --ink:#141414;
+  --muted:#6D675E;
+  --line:#D3CBBF;
+  --night:#0B0B0B;
+  --night-2:#161616;
+  --mist:#A9A49B;
+  --wa:#1FA855;        /* WhatsApp action */
+  --ember:#EA5A27;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --gl:max(16px, env(safe-area-inset-left, 0px));
+  --gr:max(16px, env(safe-area-inset-right, 0px));
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;font-feature-settings:"ss01","cv11"}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:41;background:var(--paper)}
+img,video{max-width:100%;display:block}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+h1,h2,h3,h4{margin:0;text-wrap:balance;letter-spacing:-.03em}
+p{margin:0}
+.wrap{max-width:1360px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr)}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:50px;padding:0 24px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;font-weight:600;font-size:15px;text-decoration:none;cursor:pointer;transition:background .2s ease,color .2s ease,transform .2s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn-ink{background:var(--ink);color:var(--paper)}
+.btn-ink:hover{background:#2A2A2A}
+.btn-wa{background:var(--wa);border-color:var(--wa);color:#fff;width:100%}
+.btn-wa:hover{background:#18924A}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;transform:none}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}.btn:hover{transform:none}}
+
+/* Announcement + header */
+.announce{background:var(--ink);color:var(--paper)}
+.announce .wrap{display:flex;justify-content:center;gap:6px 28px;flex-wrap:wrap;padding-block:9px;font-size:13px;font-weight:500;text-align:center}
+.announce b{font-weight:700}
+.head{position:sticky;top:env(safe-area-inset-top, 0px);z-index:40;background:rgba(231,224,214,.86);backdrop-filter:saturate(1.2) blur(12px);-webkit-backdrop-filter:saturate(1.2) blur(12px);border-bottom:1px solid var(--line)}
+.head .wrap{display:flex;align-items:center;gap:28px;min-height:64px}
+.logo{font-weight:800;font-size:23px;letter-spacing:-.05em;text-decoration:none;display:inline-flex;align-items:baseline}
+.logo i{display:inline-block;width:.21em;height:.21em;border-radius:50%;background:currentColor;margin-left:.05em}
+.nav{display:flex;gap:26px;margin-right:auto}
+.nav a{text-decoration:none;font-weight:500;font-size:15px;padding-block:6px;border-bottom:1.5px solid transparent}
+.nav a:hover{border-color:var(--ink)}
+.cart-btn{display:inline-flex;align-items:center;gap:10px;min-height:42px;padding:0 16px 0 14px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;cursor:pointer;font-weight:600}
+.cart-btn .count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--ink);color:var(--paper);font-size:12px;font-weight:700}
+.cart-btn.bump{animation:bump .45s ease}
+@keyframes bump{40%{transform:scale(1.08)}}
+.menu-btn{display:none;min-height:42px;padding:0 14px;border-radius:999px;border:1.5px solid var(--ink);background:transparent;font-weight:600;cursor:pointer}
+@media (max-width:820px){
+  .nav{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;gap:0;background:var(--paper);border-bottom:1px solid var(--line);padding:6px var(--gr) 14px var(--gl)}
+  .nav.open{display:flex}
+  .nav a{padding-block:13px;border-bottom:1px solid var(--line)}
+  .menu-btn{display:inline-flex;align-items:center;margin-left:auto}
+  .head .wrap{gap:10px}
+}
+
+/* Hero */
+.hero .wrap{display:grid;grid-template-columns:1fr 1.15fr;gap:40px 56px;align-items:center;padding-block:clamp(40px,6vw,84px) clamp(40px,5vw,64px)}
+.hero h1{font-size:clamp(50px,7.4vw,116px);font-weight:800;line-height:.9;letter-spacing:-.055em}
+.outline{color:transparent;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.hero p{margin-top:22px;max-width:40ch;color:var(--muted);font-size:17px}
+.hero .ctas{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.hero .facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:32px;padding-top:20px;border-top:1px solid var(--line)}
+.hero .facts div{display:grid}
+.hero .facts b{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.hero .facts span{font-size:13px;color:var(--muted)}
+.film{position:relative;border-radius:18px;overflow:hidden;background:#DAD2C6;aspect-ratio:16/9;max-width:100%;box-shadow:0 30px 60px -30px rgba(20,20,20,.35)}
+.film video{width:100%;height:100%;object-fit:cover}
+.film figcaption{position:absolute;left:14px;bottom:12px;display:flex;gap:8px;align-items:center;padding:6px 11px;border-radius:999px;background:rgba(20,20,20,.72);color:#F2EEE8;font-size:12px;font-weight:600}
+.film figcaption i{width:7px;height:7px;border-radius:50%;background:var(--ember)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+
+/* Colourway ribbon */
+.ribbon{overflow:hidden;border-block:1px solid var(--line);background:var(--paper-2)}
+.ribbon-track{display:flex;width:max-content;animation:roll 30s linear infinite}
+.ribbon-track span{font-size:clamp(40px,6vw,84px);font-weight:900;letter-spacing:-.05em;line-height:1;padding:18px 0;white-space:nowrap}
+.ribbon-track span::after{content:"";display:inline-block;width:.16em;height:.16em;border-radius:50%;background:var(--ink);margin:0 .45em;vertical-align:.12em}
+.ribbon-track .o{color:transparent;-webkit-text-stroke:1.5px var(--ink)}
+@keyframes roll{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.ribbon-track{animation:none}}
+
+/* Sections */
+.section{padding-block:clamp(56px,8vw,104px)}
+.s-head{display:flex;justify-content:space-between;align-items:end;gap:16px 40px;flex-wrap:wrap;margin-bottom:32px}
+.s-head h2{font-size:clamp(36px,5vw,64px);font-weight:800;line-height:.95;letter-spacing:-.05em}
+.s-head p{max-width:42ch;color:var(--muted)}
+
+/* Shop grid */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.p-card{display:grid;gap:12px;min-width:0}
+.p-card.feat{grid-column:span 2;grid-row:span 2}
+.p-media{position:relative;display:block;width:100%;padding:0;border:0;border-radius:16px;overflow:hidden;background:var(--card);cursor:pointer;aspect-ratio:4/3;max-width:100%}
+.p-card.feat .p-media{aspect-ratio:auto;height:100%;min-height:340px}
+.p-media img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.p-media:hover img{transform:scale(1.04)}
+@media (prefers-reduced-motion: reduce){.p-media img{transition:none}.p-media:hover img{transform:none}}
+.badge{position:absolute;left:12px;top:12px;padding:5px 10px;border-radius:999px;background:var(--ink);color:var(--paper);font-size:12px;font-weight:600}
+.badge.light{background:#F6F2EC;color:var(--ink)}
+.p-info{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.p-info h3{font-size:20px;font-weight:700;letter-spacing:-.03em}
+.p-card.feat .p-info h3{font-size:30px}
+.p-info .code{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.price{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.p-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(20,20,20,.2);vertical-align:-2px;margin-right:8px}
+.p-row .btn{min-height:40px;padding:0 16px;font-size:14px}
+.feat-wrap{display:grid;grid-template-rows:1fr auto auto;gap:12px;height:100%}
+@media (max-width:1060px){.grid{grid-template-columns:repeat(2,1fr)}.p-card.feat{grid-row:auto}.p-card.feat .p-media{aspect-ratio:16/10;height:auto;min-height:0}}
+@media (max-width:560px){.grid{grid-template-columns:1fr}.p-card.feat{grid-column:auto}.p-card.feat .p-media{aspect-ratio:4/3}}
+
+/* Gallery (dark, pinned sphere) */
+.gallery{background:var(--night);color:#EDEAE4;color-scheme:dark}
+.g-track{position:relative;height:280vh}
+.g-sticky{position:sticky;top:0;height:100vh;height:100dvh;overflow:hidden}
+.g-sticky::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(38% 46% at 66% 54%, rgba(234,90,39,.13), rgba(234,90,39,0) 70%),
+             radial-gradient(30% 36% at 74% 40%, rgba(42,167,180,.08), rgba(42,167,180,0) 70%)}
+.g-grid{position:relative;height:100%;display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:24px;max-width:1440px;margin:0 auto;padding-left:var(--gl);padding-right:var(--gr)}
+.g-copy{align-self:center;display:grid;gap:20px;z-index:2;min-width:0}
+.g-copy .eyebrow{color:var(--mist)}
+.g-copy h2{font-size:clamp(46px,6vw,92px);font-weight:800;line-height:.9;letter-spacing:-.055em}
+.g-copy p{color:var(--mist);max-width:34ch}
+.now{display:grid;gap:2px;padding-top:16px;border-top:1px solid #2A2A2A;min-height:70px}
+.now span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mist)}
+.now strong{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.prog{height:2px;background:#262626;position:relative;overflow:hidden}
+.prog i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(0);background:var(--ember)}
+.stage{position:relative;min-width:0;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.stage.dragging{cursor:grabbing}
+.g-card{position:absolute;left:50%;top:50%;padding:0;border:0;background:var(--night-2);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px rgba(0,0,0,.55);will-change:transform,opacity,filter}
+.g-card img{width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.g-card::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.g-card:hover::after,.g-card:focus-visible::after{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}
+.g-card:focus-visible{outline:2px solid #fff}
+@media (max-width:860px){
+  .g-grid{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:0}
+  .g-copy{align-self:start;padding-top:max(84px, calc(env(safe-area-inset-top, 0px) + 72px));gap:10px}
+  .g-copy h2{font-size:clamp(40px,12vw,64px)}
+  .g-copy p{display:none}
+  .now{padding-top:8px;min-height:0}
+  .g-sticky::before{background:radial-gradient(60% 40% at 50% 62%, rgba(234,90,39,.14), rgba(234,90,39,0) 70%)}
+}
+
+/* How to order */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;list-style:none;margin:0;padding:0;counter-reset:s}
+.steps li{display:grid;gap:12px;align-content:start;padding:26px;border-radius:18px;background:var(--paper-2);border:1px solid var(--line);counter-increment:s}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--paper);font-weight:700}
+.steps h3{font-size:21px;font-weight:700}
+.steps p{color:var(--muted)}
+.split-demo{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.split-demo div{padding:12px 14px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
+.split-demo b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.split-demo span{font-size:12px;color:var(--muted)}
+@media (max-width:900px){.steps{grid-template-columns:1fr}}
+
+/* FAQ */
+.faq{display:grid;grid-template-columns:1fr 1.6fr;gap:32px 64px;align-items:start}
+.faq details{border-top:1px solid var(--line)}
+.faq details:last-child{border-bottom:1px solid var(--line)}
+.faq summary{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:20px;cursor:pointer;font-size:18px;font-weight:600;letter-spacing:-.02em;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-size:24px;font-weight:400;transition:transform .25s ease}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{padding-bottom:20px;color:var(--muted);max-width:62ch}
+@media (max-width:900px){.faq{grid-template-columns:1fr}}
+
+/* Footer */
+.foot{background:var(--ink);color:#E9E4DC}
+.foot .wrap{padding-block:56px 28px}
+.foot-top{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:32px}
+.foot .logo{font-size:44px;color:#F2EEE8}
+.foot p{color:#9D978D;max-width:32ch;margin-top:10px}
+.foot h4{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8C867C;margin-bottom:12px}
+.foot ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.foot a{text-decoration:none}
+.foot a:hover{text-decoration:underline}
+.foot-base{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:48px;padding-top:18px;border-top:1px solid #2C2C2C;color:#8C867C;font-size:13px}
+@media (max-width:760px){.foot-top{grid-template-columns:1fr 1fr}.foot-top>div:first-child{grid-column:1/-1}}
+
+/* Overlay shell shared by product view + cart */
+.scrim{position:fixed;inset:0;z-index:80;background:rgba(20,20,20,.42);opacity:0;transition:opacity .3s ease}
+.scrim.show{opacity:1}
+
+/* Product view */
+.pv{position:fixed;z-index:90;left:50%;top:50%;width:min(1040px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;transform:translate(-50%,-48%);opacity:0;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.8,.2,1);background:var(--paper-2);border-radius:22px;display:grid;grid-template-columns:1.15fr 1fr;box-shadow:0 40px 100px -30px rgba(0,0,0,.5)}
+.pv.show{opacity:1;transform:translate(-50%,-50%)}
+.pv-media{padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.pv-main{border-radius:14px;overflow:hidden;background:var(--card);aspect-ratio:4/3;max-width:100%}
+.pv-main img{width:100%;height:100%;object-fit:cover}
+.pv-thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pv-thumbs button{padding:0;border:1.5px solid transparent;border-radius:10px;overflow:hidden;background:var(--card);aspect-ratio:1;cursor:pointer}
+.pv-thumbs button[aria-pressed="true"]{border-color:var(--ink)}
+.pv-thumbs img{width:100%;height:100%;object-fit:cover}
+.pv-info{padding:28px 28px 26px 14px;display:grid;gap:20px;align-content:start;min-width:0}
+.pv-info h3{font-size:40px;font-weight:800;line-height:1;letter-spacing:-.05em}
+.pv-info .desc{color:var(--muted)}
+.pv-price{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:600;font-size:14px}
+.label-row span{color:var(--muted);font-weight:500}
+.sizes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.size{min-height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);cursor:pointer;font-weight:600;font-variant-numeric:tabular-nums}
+.size:hover:not(:disabled){border-color:var(--ink)}
+.size[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.size:disabled{color:#A79F93;text-decoration:line-through;cursor:not-allowed;background:transparent}
+.err{color:#B3261E;font-size:14px;font-weight:600;min-height:1.3em;margin-top:6px}
+.qty{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:999px;background:var(--paper)}
+.qty button{width:38px;height:38px;border:0;background:transparent;cursor:pointer;font-size:18px;border-radius:50%}
+.qty output{min-width:28px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.pv-add{display:flex;gap:12px;align-items:center}
+.pv-add .btn{flex:1}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;margin:0;border-top:1px solid var(--line)}
+.specs div{padding:10px 0;border-bottom:1px solid var(--line)}
+.specs dt{font-size:12px;color:var(--muted)}
+.specs dd{margin:2px 0 0;font-weight:600;font-size:14px}
+.x-btn{position:absolute;right:14px;top:14px;z-index:2;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:rgba(246,242,236,.9);cursor:pointer}
+@media (max-width:820px){.pv{grid-template-columns:1fr;top:auto;bottom:0;left:0;width:100%;max-height:92dvh;border-radius:22px 22px 0 0;transform:translateY(30px)}.pv.show{transform:none}.pv-info{padding:6px 18px calc(22px + env(safe-area-inset-bottom, 0px))}.pv-info h3{font-size:32px}}
+
+/* Cart drawer */
+.drawer{position:fixed;z-index:90;top:0;right:0;bottom:0;width:min(480px,100%);background:var(--paper-2);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .4s cubic-bezier(.2,.8,.2,1);box-shadow:-30px 0 80px -30px rgba(0,0,0,.4);padding-top:env(safe-area-inset-top, 0px)}
+.drawer.show{transform:none}
+.d-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+.d-head h2{font-size:22px;font-weight:700}
+.d-head .x-btn{position:static}
+.d-body{flex:1;overflow:auto;padding:4px 20px 20px}
+.d-foot{padding:16px 20px calc(16px + env(safe-area-inset-bottom, 0px));border-top:1px solid var(--line);display:grid;gap:10px;background:var(--paper-2)}
+.empty{display:grid;justify-items:center;text-align:center;gap:14px;padding:56px 10px;color:var(--muted)}
+.empty b{color:var(--ink);font-size:18px}
+.line{display:grid;grid-template-columns:84px 1fr auto;gap:14px;align-items:center;padding-block:14px;border-bottom:1px solid var(--line)}
+.line img{width:84px;height:84px;object-fit:cover;border-radius:12px;background:var(--card)}
+.line h4{font-size:16px;font-weight:700}
+.line .meta{font-size:13px;color:var(--muted)}
+.line .qty{margin-top:8px}
+.line .qty button{width:32px;height:32px}
+.line .end{display:grid;justify-items:end;gap:8px;align-self:stretch;align-content:space-between}
+.link-btn{border:0;background:none;padding:0;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer}
+.d-sec{display:grid;gap:12px;padding-top:22px}
+.d-sec h3{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600}
+.field input,.field textarea{width:100%;min-height:46px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);font-size:16px}
+.field textarea{min-height:76px;resize:vertical}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--ink)}
+.field.bad input,.field.bad textarea{border-color:#B3261E}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pay{display:grid;gap:10px}
+.pay label{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper);cursor:pointer}
+.pay label:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.pay input{width:18px;height:18px;accent-color:var(--ink);margin:0}
+.pay b{display:block;font-size:15px}
+.pay small{display:block;color:var(--muted);font-size:13px}
+.pay .amt{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;font-size:14px}
+.pay .amt small{font-weight:500}
+.totals{display:grid;gap:6px;font-size:15px}
+.totals div{display:flex;justify-content:space-between;gap:12px}
+.totals .grand{font-size:18px;font-weight:700;padding-top:6px;border-top:1px solid var(--line)}
+.totals .now-pay{color:var(--wa);font-weight:700}
+.fine{font-size:12.5px;color:var(--muted);text-align:center}
+.sent{display:grid;gap:12px;padding:20px 0}
+.sent h3{font-size:22px;font-weight:700}
+.sent p{color:var(--muted)}
+.sent pre{margin:0;max-height:220px;overflow:auto;padding:14px;border-radius:12px;background:var(--paper);border:1px solid var(--line);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+.row-btns{display:flex;gap:10px;flex-wrap:wrap}
+.row-btns .btn{flex:1;min-height:44px}
+
+/* Lightbox */
+.lb{position:fixed;inset:0;z-index:100;color:#EDEAE4}
+.lb-bg{position:absolute;inset:0;background:rgba(6,6,6,.94);opacity:0;transition:opacity .4s ease}
+.lb.open .lb-bg{opacity:1}
+.lb-img{position:absolute;left:0;top:0;max-width:none;border-radius:12px;object-fit:cover;transform-origin:0 0;box-shadow:0 30px 80px rgba(0,0,0,.6);transition:opacity .18s ease}
+.lb-cap{position:absolute;left:0;top:0;display:grid;grid-template-columns:1fr auto;gap:4px 24px;align-items:baseline;opacity:0;transform:translateY(8px);transition:opacity .35s ease .15s,transform .35s ease .15s}
+.lb.open .lb-cap{opacity:1;transform:none}
+.lb-cap strong{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.lb-cap span{color:var(--mist);font-size:13px}
+.lb-cap p{grid-column:1/-1;color:var(--mist);font-size:15px;max-width:60ch}
+.lb-btn{position:absolute;z-index:2;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:1px solid #3A3A3A;background:rgba(20,20,20,.7);color:#EDEAE4;cursor:pointer;opacity:0;transition:opacity .3s ease .1s,background .2s ease}
+.lb.open .lb-btn{opacity:1}
+.lb-btn:hover{background:#2A2A2A}
+.lb-close{top:calc(18px + env(safe-area-inset-top, 0px));right:calc(18px + env(safe-area-inset-right, 0px))}
+.lb-prev{left:calc(18px + env(safe-area-inset-left, 0px));top:50%;margin-top:-24px}
+.lb-next{right:calc(18px + env(safe-area-inset-right, 0px));top:50%;margin-top:-24px}
+.lb-count{position:absolute;left:calc(22px + env(safe-area-inset-left, 0px));top:calc(32px + env(safe-area-inset-top, 0px));color:var(--mist);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .3s ease .1s}
+.lb.open .lb-count{opacity:1}
+@media (max-width:640px){.lb-prev,.lb-next{top:auto;bottom:calc(18px + env(safe-area-inset-bottom, 0px));margin-top:0}}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));z-index:110;transform:translate(-50%,160%);visibility:hidden;display:flex;gap:14px;align-items:center;max-width:calc(100% - 32px);padding:12px 12px 12px 18px;border-radius:999px;background:var(--ink);color:var(--paper);font-weight:500;font-size:14px;transition:transform .35s cubic-bezier(.2,.8,.2,1),visibility 0s linear .35s}
+.toast.show{transform:translate(-50%,0);visibility:visible;transition:transform .35s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.toast button{border:0;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:600;padding:8px 14px;cursor:pointer;white-space:nowrap}
+@media (prefers-reduced-motion: reduce){.scrim,.pv,.drawer,.toast,.lb-bg,.lb-cap,.lb-btn,.lb-img{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="announce"><div class="wrap">
+  <span>Order on <b>WhatsApp</b></span>
+  <span>Pay in full, or <b>half now and half on delivery</b></span>
+  <span>Drop 01 is live</span>
+</div></div>
+
+<header class="head">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="kicksart home">kicksart<i></i></a>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="#shop">Shop</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#how">How to order</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <button class="cart-btn" id="cart-btn" type="button" aria-label="Open cart">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 7h14l-1.2 12.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+      Cart <span class="count num" id="cart-count">0</span>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">SS27 · Drop 01 · Five colourways</span>
+      <h1 style="margin-top:14px">Every pair is a <span class="outline">canvas</span>.</h1>
+      <p>Sculpted runners in Lagoon, Bone, Ember, Moss and Ink. Pick your pair, place the order on WhatsApp, and pay in full or half and half.</p>
+      <div class="ctas">
+        <a class="btn btn-ink" href="#shop">Shop the drop</a>
+        <a class="btn" href="#how">How ordering works</a>
+      </div>
+      <div class="facts">
+        <div><b>5</b><span>colourways</span></div>
+        <div><b>EU 39–45</b><span>sizes</span></div>
+        <div><b>50 / 50</b><span>payment option</span></div>
+      </div>
+    </div>
+    <figure class="film" style="margin:0">
+      <video src="media/kicksart-film-720.mp4" poster="media/kicksart-film-poster.jpg" autoplay muted loop playsinline aria-label="Kicksart launch film: the dot draws the shoe, the colourways change, and the dot becomes the logo"></video>
+      <figcaption><i></i>Kicksart — launch film</figcaption>
+    </figure>
+  </div>
+</section>
+
+<div class="ribbon" aria-hidden="true">
+  <div class="ribbon-track">
+    <span style="color:#2AA7B4">Lagoon</span><span class="o">Bone</span><span style="color:#EA5A27">Ember</span><span style="color:#4E6B45">Moss</span><span>Ink</span>
+    <span style="color:#2AA7B4">Lagoon</span><span class="o">Bone</span><span style="color:#EA5A27">Ember</span><span style="color:#4E6B45">Moss</span><span>Ink</span>
+  </div>
+</div>
+
+<section class="section" id="shop" aria-labelledby="shop-title">
+  <div class="wrap">
+    <div class="s-head">
+      <h2 id="shop-title">The drop</h2>
+      <p>One silhouette, five colourways. Tap a pair to pick your size.</p>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</section>
+
+<section class="gallery" id="gallery" aria-labelledby="g-title">
+  <div class="g-track" id="track">
+    <div class="g-sticky">
+      <div class="g-grid">
+        <div class="g-copy">
+          <span class="eyebrow" id="g-count">Gallery</span>
+          <h2 id="g-title">Gallery</h2>
+          <p>Scroll or drag to turn it. Click any photo to see it up close.</p>
+          <div class="now" aria-live="polite"><span id="now-code">Photo 01</span><strong id="now-title">—</strong></div>
+          <div class="prog" aria-hidden="true"><i id="prog"></i></div>
+        </div>
+        <div class="stage" id="stage" role="list" aria-label="Gallery photos"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="s-head">
+      <h2 id="how-title">How ordering works</h2>
+      <p>No card details on this site. Your order goes straight to our team on WhatsApp.</p>
+    </div>
+    <ol class="steps">
+      <li><h3>Pick your pair</h3><p>Choose a colourway and your EU size, then add it to your cart. Mix as many pairs as you like.</p></li>
+      <li><h3>Place it on WhatsApp</h3><p>Fill in your delivery details and tap <b>Place order</b>. WhatsApp opens with your full order written out. Send it, and we confirm stock and delivery.</p></li>
+      <li><h3>Pay your way</h3><p>Pay the full amount when we confirm, or pay half now and the other half when your order arrives.</p>
+        <div class="split-demo" id="split-demo"></div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-title" style="padding-top:0">
+  <div class="wrap faq">
+    <div class="s-head" style="margin:0"><h2 id="faq-title">Questions</h2></div>
+    <div>
+      <details open><summary>How does half and half work?</summary><p>Choose “50 / 50” in your cart. You pay half of the total when we confirm your order on WhatsApp, and the other half when the order is delivered to you.</p></details>
+      <details><summary>Is my order confirmed when I send the message?</summary><p>Not yet. Our team replies on WhatsApp to confirm your size is in stock, the delivery charge for your city, and how to pay. Your order is confirmed once the first payment is received.</p></details>
+      <details><summary>How do I pick my size?</summary><p>The shoe fits true to size in EU sizing. If you are between sizes or have wide feet, go half a size up, or message us on WhatsApp and we will help.</p></details>
+      <details><summary>How long does delivery take?</summary><p>Most orders arrive in 3–5 working days after confirmation. We share tracking on WhatsApp.</p></details>
+      <details><summary>Can I exchange a size?</summary><p>Yes, within 7 days of delivery if the pair is unworn and in its box. Message us on WhatsApp to arrange it.</p></details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-top">
+      <div><a class="logo" href="#top">kicksart<i></i></a><p>Wear the art. Sculpted runners in five colourways, ordered on WhatsApp.</p></div>
+      <div><h4>Shop</h4><ul><li><a href="#shop">The drop</a></li><li><a href="#gallery">Gallery</a></li><li><a href="#" data-open-cart>Your cart</a></li></ul></div>
+      <div><h4>Help</h4><ul><li><a href="#how">How to order</a></li><li><a href="#faq">Sizing</a></li><li><a href="#faq">Delivery</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="#" id="foot-wa" target="_blank" rel="noopener">WhatsApp</a></li><li><a href="#top">Instagram</a></li></ul></div>
+    </div>
+    <div class="foot-base"><span>© 2026 Kicksart</span><span>Prices in <span id="cur-name">Rs</span></span></div>
+  </div>
+</footer>
+
+<!-- Product view -->
+<div class="scrim" id="scrim" hidden></div>
+<div class="pv" id="pv" role="dialog" aria-modal="true" aria-labelledby="pv-name" hidden>
+  <button class="x-btn" type="button" data-close aria-label="Close"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.8"/></svg></button>
+  <div class="pv-media">
+    <div class="pv-main"><img id="pv-img" alt=""></div>
+    <div class="pv-thumbs" id="pv-thumbs" role="group" aria-label="Photos"></div>
+  </div>
+  <div class="pv-info">
+    <div>
+      <span class="eyebrow" id="pv-code"></span>
+      <h3 id="pv-name" style="margin-top:8px"></h3>
+    </div>
+    <div class="pv-price" id="pv-price"></div>
+    <p class="desc" id="pv-desc"></p>
+    <div>
+      <div class="label-row">Size (EU)<span>True to size</span></div>
+      <div class="sizes" id="pv-sizes" role="group" aria-label="Size"></div>
+      <p class="err" id="pv-err" role="alert"></p>
+    </div>
+    <div class="pv-add">
+      <div class="qty" role="group" aria-label="Quantity"><button type="button" id="pv-minus" aria-label="Fewer">−</button><output id="pv-qty">1</output><button type="button" id="pv-plus" aria-label="More">+</button></div>
+      <button class="btn btn-ink" type="button" id="pv-add">Add to cart</button>
+    </div>
+    <dl class="specs">
+      <div><dt>Upper</dt><dd>Engineered knit + suede</dd></div>
+      <div><dt>Midsole</dt><dd>EVA foam, 32 mm</dd></div>
+      <div><dt>Outsole</dt><dd>Rubber, waffle grip</dd></div>
+      <div><dt>Payment</dt><dd>Full or 50 / 50</dd></div>
+    </dl>
+  </div>
+</div>
+
+<!-- Cart -->
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
+  <div class="d-head"><h2 id="d-title">Your cart</h2><button class="x-btn" type="button" data-close aria-label="Close cart"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.8"/></svg></button></div>
+  <div class="d-body" id="d-body">
+    <div id="lines"></div>
+    <div class="empty" id="empty"><b>Your cart is empty</b><span>Pick a colourway and size to get started.</span><a class="btn btn-ink" href="#shop" data-close>Browse the drop</a></div>
+
+    <form id="order-form" novalidate>
+      <div class="d-sec">
+        <h3>Delivery details</h3>
+        <div class="field" id="f-name"><label for="c-name">Full name</label><input id="c-name" name="name" autocomplete="name" placeholder="Your name"></div>
+        <div class="two">
+          <div class="field" id="f-phone"><label for="c-phone">Phone</label><input id="c-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxxxxxx"></div>
+          <div class="field" id="f-city"><label for="c-city">City</label><input id="c-city" name="city" autocomplete="address-level2" placeholder="City"></div>
+        </div>
+        <div class="field" id="f-addr"><label for="c-addr">Address</label><textarea id="c-addr" name="address" autocomplete="street-address" placeholder="House, street, area"></textarea></div>
+        <div class="field"><label for="c-notes">Notes (optional)</label><input id="c-notes" name="notes" placeholder="Landmark, preferred delivery time"></div>
+      </div>
+      <div class="d-sec">
+        <h3>How do you want to pay?</h3>
+        <div class="pay" role="radiogroup" aria-label="Payment">
+          <label><input type="radio" name="pay" value="full" checked><span><b>Full payment</b><small>Pay the whole amount when we confirm</small></span><span class="amt num" id="amt-full"></span></label>
+          <label><input type="radio" name="pay" value="split"><span><b>50 / 50</b><small>Half now, half when your order arrives</small></span><span class="amt num" id="amt-split"></span></label>
+        </div>
+      </div>
+    </form>
+
+    <div class="sent" id="sent" hidden>
+      <h3>Finish on WhatsApp</h3>
+      <p>WhatsApp should have opened with your order written out. Press send there, and our team will reply to confirm. If it didn’t open, copy the message and send it to us.</p>
+      <pre id="sent-msg"></pre>
+      <div class="row-btns">
+        <button class="btn" type="button" id="copy-btn">Copy message</button>
+        <button class="btn" type="button" id="back-btn">Edit order</button>
+      </div>
+      <button class="link-btn" type="button" id="clear-btn" style="justify-self:start">Clear cart and start again</button>
+    </div>
+  </div>
+  <div class="d-foot" id="d-foot">
+    <div class="totals">
+      <div><span>Subtotal</span><span class="num" id="t-sub"></span></div>
+      <div><span>Delivery</span><span>Confirmed on WhatsApp</span></div>
+      <div class="grand"><span>Total</span><span class="num" id="t-total"></span></div>
+      <div id="t-split-row" hidden><span>Pay now</span><span class="num now-pay" id="t-now"></span></div>
+    </div>
+    <p class="err" id="d-err" role="alert" style="margin:0"></p>
+    <a class="btn btn-wa" id="place" href="#" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3a.5.5 0 0 0 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>
+      Place order on WhatsApp
+    </a>
+    <p class="fine">Nothing is charged on this site. You confirm and pay with our team on WhatsApp.</p>
+  </div>
+</aside>
+
+<!-- Gallery viewer -->
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-bg" id="lb-bg"></div>
+  <span class="lb-count" id="lb-count"></span>
+  <img class="lb-img" id="lb-img" alt="">
+  <div class="lb-cap" id="lb-cap"><strong id="lb-title"></strong><span id="lb-code"></span><p id="lb-note"></p></div>
+  <button class="lb-btn lb-close" id="lb-close" type="button" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.6"/></svg></button>
+  <button class="lb-btn lb-prev" id="lb-prev" type="button" aria-label="Previous photo"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 2L4 8l6 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+  <button class="lb-btn lb-next" id="lb-next" type="button" aria-label="Next photo"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-msg"></span><button type="button" id="toast-btn">View cart</button></div>
+
+<script>
+/* ============================================================
+   STORE SETTINGS — change these to go live
+   whatsapp: your number in international format, digits only (e.g. 923001234567).
+             Left empty, "Place order" opens WhatsApp and asks which chat to send it to.
+   ============================================================ */
+const STORE = { whatsapp: "", currency: "Rs" };
+
+const PRODUCTS = [
+  { id: "lagoon", code: "KA-01", name: "Lagoon", colour: "Lagoon blue",        hex: "#2AA7B4", price: 18500, badge: "Hero",      sold: ["39"],
+    desc: "The first colour of the drop. One tone from heel to toe, with the black signature dot on the heel." },
+  { id: "bone",   code: "KA-02", name: "Bone",   colour: "Undyed cream / gum", hex: "#E6DCC8", price: 17500, badge: "",          sold: ["45"],
+    desc: "Raw cream knit on a gum outsole. It wears in, not out." },
+  { id: "ember",  code: "KA-03", name: "Ember",  colour: "Burnt orange / gum", hex: "#EA5A27", price: 18500, badge: "New",       sold: [],
+    desc: "Burnt orange with a gum-toned sole. The loudest pair in the run." },
+  { id: "moss",   code: "KA-04", name: "Moss",   colour: "Muted green",        hex: "#6E8B5A", price: 17500, badge: "",          sold: ["44"],
+    desc: "Muted green, tone on tone. Made for parks and wet pavements." },
+  { id: "ink",    code: "KA-05", name: "Ink",    colour: "Triple black",       hex: "#1A1A1A", price: 19500, badge: "Low stock", sold: ["40", "43"],
+    desc: "Triple black. The dot is the only shine. The one you wear with everything." }
+];
+const SIZES = ["39", "40", "41", "42", "43", "44", "45"];
+
+// Gallery photos (add more here: [file, width/height, title, line, note])
+const GALLERY = [
+  ["photo-01.jpg", 400 / 400,  "Black / White suede",  "Photo 01", "Black suede with white leather overlays, shown with the box."],
+  ["photo-02.jpg", 720 / 960,  "Grey / Gum",           "Photo 02", "Soft grey nubuck on a gum sole."],
+  ["photo-03.jpg", 736 / 726,  "Grey / Black",         "Photo 03", "Black, white and grey leather, fresh out of the box."],
+  ["photo-04.jpg", 554 / 554,  "White / Black / Blue", "Photo 04", "Leather and suede in black, white and blue."],
+  ["photo-05.jpg", 920 / 1150, "Black patent",         "Photo 05", "Black leather with glossy patent overlays and a white sole."]
+];
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const money = n => STORE.currency + " " + Math.round(n).toLocaleString("en-US");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const byId = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));
+  const img = (p, v = "") => "img/products/" + p.id + (v ? "-" + v : "") + ".jpg";
+  $("cur-name").textContent = STORE.currency;
+  const waBase = () => "https://wa.me/" + (STORE.whatsapp || "");
+  $("foot-wa").href = waBase() + (STORE.whatsapp ? "" : "?text=" + encodeURIComponent("Hi Kicksart!"));
+
+  /* ---------------- Storage (per-browser convenience) ---------------- */
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e){ return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e){} }
+  };
+  let cart = store.get("kicksart-cart", []).filter(l => byId[l.id] && SIZES.includes(l.size));
+
+  /* ---------------- Shop grid ---------------- */
+  const grid = $("grid");
+  PRODUCTS.forEach((p, i) => {
+    const el = document.createElement("article");
+    el.className = "p-card" + (i === 0 ? " feat" : "");
+    const badge = p.badge ? '<span class="badge' + (p.id === "ink" ? " light" : "") + '">' + p.badge + "</span>" : "";
+    const inner =
+      '<button class="p-media" type="button" data-pv="' + p.id + '" aria-label="' + p.name + ', ' + money(p.price) + '. Choose size">' + badge +
+        '<img src="' + img(p) + '" alt="' + p.code + ' ' + p.name + ' sneaker, side view" loading="lazy"></button>' +
+      '<div class="p-info"><div><h3>' + p.name + '</h3><span class="code">' + p.code + ' · ' + p.colour + '</span></div><span class="price">' + money(p.price) + '</span></div>' +
+      '<div class="p-row"><span class="code" style="font-size:13px;color:var(--muted)"><span class="dot" style="background:' + p.hex + '"></span>EU 39–45</span>' +
+        '<button class="btn" type="button" data-pv="' + p.id + '">Choose size</button></div>';
+    el.innerHTML = i === 0 ? '<div class="feat-wrap">' + inner + "</div>" : inner;
+    grid.appendChild(el);
+  });
+
+  /* ---------------- Overlay management ---------------- */
+  const scrim = $("scrim"), pv = $("pv"), drawer = $("drawer");
+  let openEl = null, lastFocus = null;
+  function openPanel(el){
+    if (openEl && openEl !== el) closePanel(true);
+    lastFocus = document.activeElement;
+    openEl = el;
+    scrim.hidden = false; el.hidden = false;
+    document.documentElement.style.overflow = "hidden";
+    requestAnimationFrame(() => { scrim.classList.add("show"); el.classList.add("show"); });
+    setTimeout(() => { const f = el.querySelector("[data-close], button, input"); f && f.focus({ preventScroll: true }); }, 60);
+  }
+  function closePanel(instant){
+    if (!openEl) return;
+    const el = openEl; openEl = null;
+    scrim.classList.remove("show"); el.classList.remove("show");
+    const done = () => { el.hidden = true; if (!openEl){ scrim.hidden = true; document.documentElement.style.overflow = ""; } };
+    if (instant || reduce) done(); else setTimeout(done, 380);
+    if (!instant && lastFocus) lastFocus.focus({ preventScroll: true });
+  }
+  scrim.addEventListener("click", () => closePanel());
+  document.addEventListener("click", e => {
+    if (e.target.closest("[data-close]")) closePanel();
+    if (e.target.closest("[data-open-cart]")){ e.preventDefault(); openCart(); }
+    const t = e.target.closest("[data-pv]"); if (t) openProduct(t.dataset.pv);
+  });
+  addEventListener("keydown", e => { if (e.key === "Escape" && openEl && $("lb").hidden) closePanel(); });
+
+  /* ---------------- Product view ---------------- */
+  const pvState = { p: null, size: null, qty: 1 };
+  function openProduct(id){
+    const p = byId[id]; pvState.p = p; pvState.size = null; pvState.qty = 1;
+    $("pv-code").textContent = p.code + " · " + p.colour;
+    $("pv-name").textContent = p.name;
+    $("pv-price").textContent = money(p.price);
+    $("pv-desc").textContent = p.desc;
+    $("pv-err").textContent = "";
+    $("pv-qty").textContent = "1";
+    const views = [["", "Side view"], ["heel", "Heel and signature dot"], ["toe", "Toe box"]];
+    $("pv-img").src = img(p); $("pv-img").alt = p.name + ", side view";
+    $("pv-thumbs").innerHTML = views.map((v, i) => '<button type="button" aria-pressed="' + (i === 0) + '" aria-label="' + v[1] + '" data-v="' + v[0] + '"><img src="' + img(p, v[0]) + '" alt=""></button>').join("");
+    renderSizes();
+    openPanel(pv);
+  }
+  $("pv-thumbs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("pv-img").src = img(pvState.p, b.dataset.v);
+    $("pv-img").alt = pvState.p.name + ", " + b.getAttribute("aria-label").toLowerCase();
+    [...$("pv-thumbs").children].forEach(x => x.setAttribute("aria-pressed", x === b));
+  });
+  function renderSizes(){
+    const p = pvState.p;
+    $("pv-sizes").innerHTML = SIZES.map(s => {
+      const out = p.sold.includes(s);
+      return '<button type="button" class="size num" data-s="' + s + '" aria-pressed="' + (pvState.size === s) + '"' + (out ? ' disabled aria-label="EU ' + s + ', sold out"' : ' aria-label="EU ' + s + '"') + '>' + s + "</button>";
+    }).join("");
+  }
+  $("pv-sizes").addEventListener("click", e => {
+    const b = e.target.closest(".size"); if (!b || b.disabled) return;
+    pvState.size = b.dataset.s; $("pv-err").textContent = ""; renderSizes();
+    $("pv-sizes").querySelector('[data-s="' + pvState.size + '"]').focus();
+  });
+  $("pv-minus").addEventListener("click", () => { pvState.qty = Math.max(1, pvState.qty - 1); $("pv-qty").textContent = pvState.qty; });
+  $("pv-plus").addEventListener("click", () => { pvState.qty = Math.min(9, pvState.qty + 1); $("pv-qty").textContent = pvState.qty; });
+  $("pv-add").addEventListener("click", () => {
+    if (!pvState.size){ $("pv-err").textContent = "Pick your size first."; $("pv-sizes").querySelector(".size:not(:disabled)").focus(); return; }
+    const p = pvState.p;
+    const hit = cart.find(l => l.id === p.id && l.size === pvState.size);
+    if (hit) hit.qty = Math.min(9, hit.qty + pvState.qty); else cart.push({ id: p.id, size: pvState.size, qty: pvState.qty });
+    saveCart(); closePanel();
+    toast(p.name + ", EU " + pvState.size + " added to your cart");
+    const cb = $("cart-btn"); cb.classList.remove("bump"); void cb.offsetWidth; cb.classList.add("bump");
+  });
+
+  /* ---------------- Cart ---------------- */
+  function saveCart(){ store.set("kicksart-cart", cart); renderCart(); }
+  const subtotal = () => cart.reduce((s, l) => s + byId[l.id].price * l.qty, 0);
+  const payMode = () => (document.querySelector('input[name="pay"]:checked') || {}).value || "full";
+  function renderCart(){
+    const n = cart.reduce((s, l) => s + l.qty, 0);
+    $("cart-count").textContent = n;
+    $("cart-btn").setAttribute("aria-label", "Open cart, " + n + (n === 1 ? " pair" : " pairs"));
+    $("empty").hidden = cart.length > 0;
+    $("order-form").hidden = cart.length === 0 || !$("sent").hidden;
+    $("lines").hidden = !$("sent").hidden;
+    $("d-foot").hidden = cart.length === 0 || !$("sent").hidden;
+    $("lines").innerHTML = cart.map((l, i) => {
+      const p = byId[l.id];
+      return '<div class="line"><img src="' + img(p) + '" alt="">' +
+        '<div><h4>' + p.name + '</h4><div class="meta">' + p.code + ' · EU ' + l.size + '</div>' +
+        '<div class="qty" role="group" aria-label="Quantity for ' + p.name + '"><button type="button" data-q="' + i + '" data-d="-1" aria-label="Fewer">−</button><output class="num">' + l.qty + '</output><button type="button" data-q="' + i + '" data-d="1" aria-label="More">+</button></div></div>' +
+        '<div class="end"><span class="price">' + money(p.price * l.qty) + '</span><button class="link-btn" type="button" data-rm="' + i + '">Remove</button></div></div>';
+    }).join("");
+    const sub = subtotal(), now = Math.ceil(sub / 2), later = sub - now;
+    $("t-sub").textContent = money(sub);
+    $("t-total").textContent = money(sub);
+    $("amt-full").innerHTML = money(sub) + "<small>now</small>";
+    $("amt-split").innerHTML = money(now) + "<small>now · " + money(later) + " later</small>";
+    $("t-split-row").hidden = payMode() !== "split";
+    $("t-now").textContent = money(now);
+    updateLink();
+  }
+  $("lines").addEventListener("click", e => {
+    const q = e.target.closest("[data-q]"), rm = e.target.closest("[data-rm]");
+    if (q){ const l = cart[+q.dataset.q]; l.qty = Math.max(1, Math.min(9, l.qty + +q.dataset.d)); saveCart(); }
+    if (rm){ cart.splice(+rm.dataset.rm, 1); saveCart(); }
+  });
+  function openCart(){ $("sent").hidden = true; renderCart(); openPanel(drawer); }
+  $("cart-btn").addEventListener("click", openCart);
+
+  // Remember delivery details in this browser
+  const FIELDS = ["c-name", "c-phone", "c-city", "c-addr", "c-notes"];
+  const saved = store.get("kicksart-details", {});
+  FIELDS.forEach(id => { if (saved[id]) $(id).value = saved[id]; });
+  if (saved.pay) { const r = document.querySelector('input[name="pay"][value="' + saved.pay + '"]'); if (r) r.checked = true; }
+  $("order-form").addEventListener("input", () => {
+    const d = {}; FIELDS.forEach(id => d[id] = $(id).value); d.pay = payMode(); store.set("kicksart-details", d);
+    document.querySelectorAll(".field.bad").forEach(f => { const i = f.querySelector("input,textarea"); if (i && i.value.trim()) f.classList.remove("bad"); });
+    $("d-err").textContent = "";
+    renderCart();
+  });
+  $("order-form").addEventListener("submit", e => e.preventDefault());
+
+  /* ---------------- WhatsApp order ---------------- */
+  let orderId = null;
+  function newOrderId(){
+    const d = new Date();
+    return "KS-" + String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") + "-" + Math.floor(100 + Math.random() * 900);
+  }
+  function message(id){
+    const sub = subtotal(), now = Math.ceil(sub / 2), later = sub - now;
+    const v = k => $(k).value.trim();
+    const lines = cart.map((l, i) => { const p = byId[l.id]; return (i + 1) + ") " + p.code + " " + p.name + " — EU " + l.size + " × " + l.qty + " — " + money(p.price * l.qty); });
+    const pay = payMode() === "split"
+      ? "50 / 50 — " + money(now) + " now, " + money(later) + " on delivery"
+      : "Full payment — " + money(sub);
+    return [
+      "Hi Kicksart! I'd like to place an order.",
+      "",
+      "Order: " + id,
+      ...lines,
+      "",
+      "Total: " + money(sub) + " (delivery to be confirmed)",
+      "Payment: " + pay,
+      "",
+      "Name: " + v("c-name"),
+      "Phone: " + v("c-phone"),
+      "City: " + v("c-city"),
+      "Address: " + v("c-addr"),
+      v("c-notes") ? "Notes: " + v("c-notes") : null
+    ].filter(x => x !== null).join("\n");
+  }
+  function waUrl(id){ return waBase() + "?text=" + encodeURIComponent(message(id)); }
+  function updateLink(){ $("place").href = waUrl(orderId || "(new order)"); }
+  function validate(){
+    const need = [["f-name", "c-name"], ["f-phone", "c-phone"], ["f-city", "c-city"], ["f-addr", "c-addr"]];
+    let first = null;
+    need.forEach(([f, i]) => {
+      let ok = $(i).value.trim().length > 1;
+      if (i === "c-phone") ok = $(i).value.replace(/\D/g, "").length >= 7;
+      $(f).classList.toggle("bad", !ok);
+      if (!ok && !first) first = $(i);
+    });
+    if (first){ $("d-err").textContent = "Add your delivery details so we know where to send it."; first.focus(); return false; }
+    return true;
+  }
+  $("place").addEventListener("click", e => {
+    if (!cart.length){ e.preventDefault(); return; }
+    if (!validate()){ e.preventDefault(); return; }
+    orderId = newOrderId();
+    const msg = message(orderId);
+    $("place").href = waBase() + "?text=" + encodeURIComponent(msg);   // the link opens with this exact order
+    $("sent-msg").textContent = msg;
+    setTimeout(() => { $("sent").hidden = false; renderCart(); $("d-body").scrollTop = 0; $("copy-btn").focus(); }, 120);
+  });
+  $("copy-btn").addEventListener("click", () => {
+    const txt = $("sent-msg").textContent;
+    const done = () => { $("copy-btn").textContent = "Copied"; setTimeout(() => $("copy-btn").textContent = "Copy message", 1800); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($("sent-msg")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy-btn").textContent = "Selected — press Ctrl/Cmd + C"; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+  });
+  $("back-btn").addEventListener("click", () => { $("sent").hidden = true; orderId = null; renderCart(); });
+  $("clear-btn").addEventListener("click", () => { cart = []; orderId = null; $("sent").hidden = true; saveCart(); });
+
+  /* ---------------- Toast ---------------- */
+  let tTimer;
+  function toast(msg){
+    $("toast-msg").textContent = msg; $("toast").classList.add("show");
+    clearTimeout(tTimer); tTimer = setTimeout(() => $("toast").classList.remove("show"), 3600);
+  }
+  $("toast-btn").addEventListener("click", () => { $("toast").classList.remove("show"); openCart(); });
+
+  /* ---------------- How-to-order example ---------------- */
+  const ex = PRODUCTS[0].price;
+  $("split-demo").innerHTML = '<div><b>' + money(Math.ceil(ex / 2)) + '</b><span>Now, on confirmation</span></div><div><b>' + money(ex - Math.ceil(ex / 2)) + '</b><span>When it arrives</span></div>';
+
+  /* ---------------- Mobile menu ---------------- */
+  $("menu-btn").addEventListener("click", () => { const o = $("nav").classList.toggle("open"); $("menu-btn").setAttribute("aria-expanded", o); });
+  $("nav").addEventListener("click", e => { if (e.target.closest("a")){ $("nav").classList.remove("open"); $("menu-btn").setAttribute("aria-expanded", "false"); } });
+
+  renderCart();
+
+  /* ================= Gallery sphere ================= */
+  const stage = $("stage"), track = $("track");
+  const G = GALLERY.length;
+  const CARDS = Math.max(G, Math.min(18, G * Math.ceil(15 / G)));   // repeat photos to fill the sphere until more are added
+  $("g-count").textContent = "Gallery · " + String(G).padStart(2, "0") + " photos";
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const pts = Array.from({ length: CARDS }, (_, i) => {
+    const y = 1 - (i + .5) / CARDS * 2, r = Math.sqrt(1 - y * y), a = i * GOLD;
+    return { x: Math.cos(a) * r, y, z: Math.sin(a) * r };
+  });
+  const cards = pts.map((_, i) => {
+    const it = GALLERY[i % G];
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "g-card"; b.setAttribute("role", "listitem");
+    b.setAttribute("aria-label", it[2] + ". Open larger");
+    b.innerHTML = '<img src="img/community/' + it[0] + '" alt="" decoding="async" draggable="false">';
+    b.dataset.i = i % G;
+    stage.appendChild(b);
+    return b;
+  });
+  let yawAuto = 0, yawDrag = 0, pitchDrag = -.18, vYaw = 0, vPitch = 0, dragging = false, paused = false, R = 200, front = -1;
+  function size(){
+    const r = stage.getBoundingClientRect(), narrow = innerWidth < 860;
+    R = Math.min(r.width, r.height) * (narrow ? .36 : .37);
+    const cw = R * (narrow ? .6 : .54);
+    cards.forEach((c, i) => {
+      const a = GALLERY[i % G][1], w = cw * Math.sqrt(a), h = cw / Math.sqrt(a);
+      Object.assign(c.style, { width: w + "px", height: h + "px", marginLeft: -w / 2 + "px", marginTop: -h / 2 + "px" });
+    });
+  }
+  function place(){
+    const tr = track.getBoundingClientRect();
+    const sp = Math.min(1, Math.max(0, -tr.top / (tr.height - innerHeight)));
+    $("prog").style.transform = "scaleX(" + sp + ")";
+    const yaw = yawAuto + yawDrag + sp * Math.PI * 1.6, pitch = pitchDrag + Math.sin(sp * Math.PI) * .22;
+    const spread = .86 + .14 * (1 - Math.pow(1 - Math.min(1, sp * 2.5), 3));
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), spn = Math.sin(pitch), F = 3.4;
+    let best = -2, bi = 0;
+    pts.forEach((p, i) => {
+      const x1 = p.x * cy + p.z * sy, z1 = -p.x * sy + p.z * cy;
+      const y2 = p.y * cp - z1 * spn, z2 = p.y * spn + z1 * cp;
+      const d = (z2 + 1) / 2, s = F / (F - z2);
+      const c = cards[i];
+      c.style.transform = "translate3d(" + (x1 * R * spread * s).toFixed(1) + "px," + (y2 * R * spread * s).toFixed(1) + "px,0) scale(" + (s * (.6 + .4 * d)).toFixed(3) + ")";
+      c.style.opacity = (.1 + .9 * Math.pow(d, 1.6)).toFixed(3);
+      c.style.filter = "brightness(" + (.32 + .68 * d).toFixed(3) + ")";
+      c.style.zIndex = Math.round(d * 1000);
+      c.style.pointerEvents = d > .35 ? "auto" : "none";
+      c.tabIndex = d > .35 ? 0 : -1;
+      if (z2 > best){ best = z2; bi = i; }
+    });
+    if (bi !== front){ front = bi; const it = GALLERY[bi % G]; $("now-code").textContent = it[3]; $("now-title").textContent = it[2]; }
+  }
+  let last = performance.now();
+  function tick(now){
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!paused){
+      if (!dragging){ if (!reduce) yawAuto += dt * .14; yawDrag += vYaw; pitchDrag += vPitch; vYaw *= .93; vPitch *= .9; }
+      pitchDrag = Math.max(-.7, Math.min(.7, pitchDrag));
+      place();
+    }
+    requestAnimationFrame(tick);
+  }
+  let sx = 0, sy0 = 0, lx = 0, ly = 0, moved = 0, downCard = null, pid = null;
+  stage.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    pid = e.pointerId; sx = lx = e.clientX; sy0 = ly = e.clientY; moved = 0;
+    downCard = e.target.closest(".g-card"); dragging = true; vYaw = vPitch = 0;
+    stage.setPointerCapture(pid);
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!dragging || e.pointerId !== pid) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+    moved = Math.max(moved, Math.hypot(e.clientX - sx, e.clientY - sy0));
+    if (moved > 6){ stage.classList.add("dragging"); yawDrag += dx * .006; pitchDrag -= dy * .004; vYaw = dx * .006; vPitch = -dy * .004; }
+  });
+  stage.addEventListener("pointerup", e => {
+    if (!dragging || e.pointerId !== pid) return;
+    dragging = false; stage.classList.remove("dragging");
+    if (reduce) vYaw = vPitch = 0;
+    if (moved <= 6 && downCard) lbOpen(downCard);
+    downCard = null;
+  });
+  stage.addEventListener("pointercancel", () => { dragging = false; stage.classList.remove("dragging"); downCard = null; });
+  stage.addEventListener("click", e => { if (e.detail === 0){ const c = e.target.closest(".g-card"); if (c) lbOpen(c); } });
+
+  /* ---------------- Gallery viewer ---------------- */
+  const lb = $("lb"), lbImg = $("lb-img"), lbCap = $("lb-cap");
+  let cur = 0, curCard = null, busy = false;
+  function target(i){
+    const a = GALLERY[i][1], narrow = innerWidth < 640;
+    const maxW = Math.min(1100, innerWidth - (narrow ? 32 : 180)), maxH = innerHeight - (narrow ? 240 : 210);
+    let w = maxW, h = w / a; if (h > maxH){ h = maxH; w = h * a; }
+    return { w, h, x: (innerWidth - w) / 2, y: Math.max(narrow ? 76 : 70, (innerHeight - h - 96) / 2) };
+  }
+  function fill(i){
+    const it = GALLERY[i];
+    lbImg.src = "img/community/" + it[0]; lbImg.alt = it[2] + ". " + it[4];
+    $("lb-title").textContent = it[2]; $("lb-code").textContent = it[3]; $("lb-note").textContent = it[4];
+    $("lb-count").textContent = String(i + 1).padStart(2, "0") + " / " + String(G).padStart(2, "0");
+  }
+  function layout(i){
+    const t = target(i);
+    Object.assign(lbImg.style, { width: t.w + "px", height: t.h + "px", left: t.x + "px", top: t.y + "px" });
+    Object.assign(lbCap.style, { left: t.x + "px", top: (t.y + t.h + 18) + "px", width: t.w + "px" });
+    return t;
+  }
+  function fromRect(r, t){ return "translate(" + (r.left - t.x) + "px," + (r.top - t.y) + "px) scale(" + (r.width / t.w) + "," + (r.height / t.h) + ")"; }
+  function lbOpen(card){
+    if (busy) return;
+    cur = +card.dataset.i; curCard = card; paused = true;
+    fill(cur); lb.hidden = false; document.documentElement.style.overflow = "hidden";
+    const t = layout(cur);
+    lbImg.style.transition = "none"; lbImg.style.transform = fromRect(card.getBoundingClientRect(), t);
+    lbImg.getBoundingClientRect();
+    lbImg.style.transition = reduce ? "none" : "transform .6s cubic-bezier(.2,.8,.2,1), opacity .18s ease";
+    lbImg.style.transform = "none"; lbImg.style.opacity = 1;
+    requestAnimationFrame(() => lb.classList.add("open"));
+    card.style.visibility = "hidden";
+    $("lb-close").focus({ preventScroll: true });
+  }
+  function cardFor(i){ // the visible card that shows photo i, nearest the front
+    let best = null, bz = -1;
+    cards.forEach(c => { if (+c.dataset.i === i && +c.style.zIndex > bz){ bz = +c.style.zIndex; best = c; } });
+    return best;
+  }
+  function lbClose(){
+    if (lb.hidden || busy) return;
+    busy = true;
+    const card = cardFor(cur) || curCard, t = target(cur);
+    cards.forEach(c => c.style.visibility = ""); card.style.visibility = "hidden";
+    lb.classList.remove("open");
+    lbImg.style.transition = reduce ? "none" : "transform .5s cubic-bezier(.5,0,.2,1)";
+    lbImg.style.transform = fromRect(card.getBoundingClientRect(), t);
+    const done = () => { lb.hidden = true; busy = false; cards.forEach(c => c.style.visibility = ""); document.documentElement.style.overflow = ""; paused = false; last = performance.now(); card.focus({ preventScroll: true }); };
+    if (reduce) done(); else setTimeout(done, 500);
+  }
+  function lbGo(step){
+    if (busy) return;
+    cur = (cur + step + G) % G;
+    lbImg.style.transition = "opacity .16s ease"; lbImg.style.opacity = 0;
+    setTimeout(() => { fill(cur); layout(cur); lbImg.style.transform = "none"; const show = () => lbImg.style.opacity = 1; if (lbImg.complete) show(); else lbImg.onload = show; }, reduce ? 0 : 160);
+  }
+  $("lb-close").addEventListener("click", lbClose);
+  $("lb-bg").addEventListener("click", lbClose);
+  $("lb-prev").addEventListener("click", () => lbGo(-1));
+  $("lb-next").addEventListener("click", () => lbGo(1));
+  addEventListener("keydown", e => {
+    if (lb.hidden) return;
+    if (e.key === "Escape") lbClose();
+    if (e.key === "ArrowRight") lbGo(1);
+    if (e.key === "ArrowLeft") lbGo(-1);
+    if (e.key === "Tab"){ const f = [$("lb-close"), $("lb-prev"), $("lb-next")]; const k = f.indexOf(document.activeElement); e.preventDefault(); f[(k + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus(); }
+  });
+  let tx0 = null;
+  lbImg.addEventListener("pointerdown", e => { tx0 = e.clientX; });
+  lbImg.addEventListener("pointerup", e => { if (tx0 === null) return; const d = e.clientX - tx0; tx0 = null; if (Math.abs(d) > 40) lbGo(d < 0 ? 1 : -1); });
+  addEventListener("resize", () => { size(); if (!lb.hidden){ layout(cur); lbImg.style.transform = "none"; } });
+  size(); place(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
