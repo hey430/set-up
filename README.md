@@ -1,53 +1,94 @@
 # Tracker
 
-The agency's private dashboard. It runs locally on the agency's own computers and brings Euka, Slack, Higgsfield and the brands' social accounts into one place.
+The agency's private dashboard. It runs on the agency's own computer and is built to bring Euka, Slack, Higgsfield and the brands' social accounts into one place.
 
-> **Current stage: interface prototype.** Every screen works, but on **sample data**: no real brands, numbers or messages. The live connections are the next stage (see the roadmap below).
+## Where it stands
 
-## What's in it
+| Part | Status |
+| --- | --- |
+| Interface: Home, News, Brands, Post more, Tracker AI, Employees, Connections | Done |
+| Local server with a database, so nothing is lost on reload or restart | Done |
+| Sign-in, one-time sign-in links for employees, password change, sign out | Done |
+| Permissions enforced by the server, not only hidden on screen | Done |
+| Admin can preview what any employee sees (read-only) | Done |
+| Euka, Slack and Higgsfield connections | **Not connected yet.** Tracker starts with sample data, clearly labelled |
+| Video pipeline (script, Higgsfield video, editing, supervisor) | **Simulated.** Requests, approvals and history are real; no video is created or posted |
+| Tracker AI | **Prepared answers** to common questions until Claude is connected |
 
-| Area | What it does | Who sees it |
-| --- | --- | --- |
-| **Home** | Combined results for all brands (GMV, spend, ROAS, CTR, creators, videos), a 30-day chart, share of GMV, brands needing attention. Scroll down for each brand's own results. | Everyone, limited to the brands they're allowed |
-| **News** | A feed where the News agent posts what happened, read from Slack and Euka. Each post is labelled **Result** or **News**, carries the brand's name, and has an evaluation: *Scale it*, *Watch*, *Fix now* or *Update*. | People with "Read News" |
-| **Brands** | A list of brands. Open one to see the videos running for it, with full specs for each video, posting accounts and video requests. | Everyone, limited to their brands |
-| **Post more** | On a brand page. The employee describes the video they want, then four agents take over: the **Script agent** writes it, the **Higgsfield video agent** generates the clips, the **Editing agent** cuts it, and the **Supervisor agent** checks every step and reports live progress in the same place. The result is then approved and published, or sent back for changes. | People with "Request new videos"; publishing needs "Approve and publish" |
-| **Tracker AI** | Chat button at the bottom right. Answers questions about brands, results, news and how to use the dashboard, within the asker's own permissions. | People with "Use Tracker AI" |
-| **Employees** (admin) | Add employees in two steps. The admin must choose their brands and permissions before anyone is added. Edit permissions or remove people at any time. | Admin only |
-| **Connections** (admin) | Slack, Euka, Higgsfield and Claude are connected once for everyone. Social accounts are connected per brand. | Admin only |
-| **Add brand** | Only an admin can add brands. | Admin only |
+## Start Tracker
 
-Permissions an admin can grant: see results · see ad spend and budgets · read News · request new videos · approve and publish · use Tracker AI, plus which brands each person can see.
+You need [Node.js](https://nodejs.org) version 22.13 or newer. Nothing else is installed.
 
-In the prototype, the **Viewing as** menu in the sidebar switches between people so you can show how the dashboard changes for each permission level.
-
-## Run it
-
-Open `dashboard/index.html` in a browser. Nothing to install.
-
-Or serve it on the local network:
+On the computer that will host Tracker, open a terminal in this folder and run:
 
 ```bash
-python3 -m http.server 8080 --directory dashboard
+node server/server.js --office
 ```
+
+It prints two addresses: one for that computer and one for the rest of the office network. Leave the terminal open; closing it stops Tracker.
+
+To try it privately first, so only that computer can open it:
+
+```bash
+node server/server.js
+```
+
+### First time
+
+1. Open the address in a browser. Tracker asks for your agency name, your name, email and a password. That creates the **admin** account.
+2. Leave "Start with sample brands" ticked to look around with made-up data. Remove it later in **Connections → Remove sample data**.
+3. Go to **Employees → Add employee**. Enter their details, then choose their brands and permissions. Tracker gives you a **sign-in link** to send them (it doesn't send email). The link works once, for 7 days, and lets them choose their own password.
+
+### Everyday
+
+- **Forgot password (employee):** the admin opens Employees and presses **Sign-in link** for that person.
+- **Forgot password (admin):** on the host computer run the command below, then open the link it prints.
+
+```bash
+node server/server.js --reset-admin
+```
+
+- **See what an employee sees:** click your name at the bottom left, then pick a person. It is read-only.
+- **Backups:** everything lives in the `data` folder. Copy that folder to back Tracker up.
+
+## What each person can be given
+
+See results · see ad spend and budgets · read News · request new videos · approve and publish · use Tracker AI, plus which brands they can see. Only the admin can add brands, manage employees and change connections.
+
+News posts are written as text, so a post can mention results or spend. Only give "Read News" to people who may see that.
+
+## Security notes
+
+- Passwords are stored hashed, never as plain text. Five wrong tries lock that sign-in for a minute.
+- Employees only ever receive the brands and numbers they were granted; the server strips the rest before sending.
+- Removing an employee signs them out immediately.
+- Tracker uses plain `http` on your office network. Use it on a network you trust, not on public Wi-Fi, and don't open its port to the internet.
 
 ## Files
 
-| File | What it is |
+| Path | What it is |
 | --- | --- |
-| `dashboard/index.html` | Layout and styling: black and purple theme, sidebar layout from the agency reference design, Inter font. Change the font in one place: `--font` at the top of the styles |
-| `dashboard/app.js` | All screens and behaviour. Places where live services plug in are marked `LIVE:` |
-| `dashboard/data.js` | Sample brands, videos, news, employees and accounts |
-| `scripts/build-preview.py` | Builds a single-file copy for sharing as a web preview |
+| `server/server.js` | The local server: pages, sign-in, and every action |
+| `server/views.js` | Decides what each person is allowed to receive |
+| `server/auth.js` | Passwords, sessions and sign-in links |
+| `server/db.js` | The database (one file in `data/`) and the sample data loader |
+| `server/pipeline.js` | The video request pipeline. Each step that will call a real service is marked `LIVE` |
+| `dashboard/` | The interface. `data.js` holds the sample data |
+| `tests/` | Automated checks (below) |
 
-## Roadmap to the live version (still hosted locally)
+Opening `dashboard/index.html` directly, without the server, still works as a no-login demo on sample data.
 
-1. **Local server.** A small server on the agency's machine (Node.js) with a local database (SQLite). It holds the employees, permissions, brands and video requests, and it checks permissions on every request, not just in the screen.
-2. **Logins.** Each employee signs in with their invite. Admin rights stay with the owner.
-3. **Euka and Slack sync.** One agency Euka key and one Slack bot token, stored only on the server in a `.env` file. They fill the brands, videos, specs and results, and feed the News agent.
-4. **News agent.** Reads new Slack messages and Euka results on a schedule, writes the evaluation, and posts it to News.
-5. **Video pipeline.** Script agent and supervisor run on Claude; the video agent calls the Higgsfield API; the editing agent assembles captions, music and end card. Every step reports back to the request's page.
-6. **Social posting.** Admins connect each brand's TikTok, Instagram, YouTube and Facebook accounts through each platform's official login (OAuth). Employees never type social media passwords into Tracker.
-7. **Tracker AI.** The chat button asks Claude with the dashboard's data, filtered to what the person is allowed to see.
+## Tests
 
-Keep the `.env` file out of git and only install the server on machines the agency controls.
+```bash
+npm test
+```
+
+Runs three checks: the server's sign-in and permission rules, the demo in a browser as every person, and the real server in a browser (setup, sign-in links, a video request, approval, restart, removal). The two browser checks need Playwright.
+
+## Next
+
+1. **Higgsfield:** the admin signs in once from Connections; the video step then creates real videos and the credits card shows the real balance.
+2. **Euka and Slack sync:** real brands, videos and results, and the News agent writing real posts.
+3. **Claude:** real scripts, supervisor checks and Tracker AI answers.
+4. **Posting:** each brand's social accounts connected through the platform's official login.

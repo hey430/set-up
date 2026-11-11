@@ -1,0 +1,13 @@
+{
+  "name": "tracker",
+  "version": "0.2.0",
+  "private": true,
+  "description": "The agency's private dashboard, hosted on its own computer.",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server/server.js",
+    "start:office": "node server/server.js --office",
+    "reset-admin": "node server/server.js --reset-admin",
+    "test": "node --test tests/server.test.js && node tests/walkthrough.js && node tests/live.walkthrough.js"
+  }
+}

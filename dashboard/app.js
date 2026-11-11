@@ -7,7 +7,8 @@
  */
 (function () {
   "use strict";
-  const D = window.DASHBOARD_DATA;
+  const LIVE = !!window.TRACKER_LIVE; // true when opened through the local server
+  let D = LIVE ? null : window.DASHBOARD_DATA;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
@@ -70,12 +71,13 @@
     tableSearch: false,
     tablePage: 1,
     pendingVideo: null,
+    previewAs: null,
   };
 
   const PERMS = [
     { key: "results", label: "See results", desc: "Home page numbers, brand performance and video stats" },
     { key: "spend", label: "See ad spend and budgets", desc: "Spend, budgets and ROAS inputs" },
-    { key: "news", label: "Read News", desc: "Performance news and evaluations from Slack" },
+    { key: "news", label: "Read News", desc: "Performance news and evaluations from Slack. Posts can mention results and spend." },
     { key: "create", label: "Request new videos", desc: "Use “Post more” to start the agent pipeline" },
     { key: "approve", label: "Approve and publish", desc: "Publish finished videos to the brand's social accounts" },
     { key: "assistant", label: "Use Tracker AI", desc: "Ask the assistant about brands and the dashboard" },
@@ -111,7 +113,7 @@
   }
 
   /* ================= permissions ================= */
-  const me = () => D.employees.find((e) => e.id === state.user) || D.employees[0];
+  const me = () => (LIVE ? D.me : D.employees.find((e) => e.id === state.user) || D.employees[0]);
   const isAdmin = () => me().role === "admin";
   const can = (p) => isAdmin() || me().perms.includes(p);
   const brandOk = (id) => isAdmin() || me().brands === "all" || me().brands.includes(id);
@@ -140,8 +142,15 @@
     const r = navKey();
     const link = (id, icon, label, extra = "") => `<a class="nav-link" href="#${id}" aria-current="${r === id ? "page" : "false"}" title="${label}">${icon}<span class="lbl">${label}</span>${extra}</a>`;
     const fresh = D.news.filter((n) => brandOk(n.brand)).length;
-    const people = D.employees.filter((e) => e.status === "active" || e.status === "invited");
-    const c = D.credits, pct = Math.round((c.used / c.total) * 100), u = me();
+    const people = LIVE ? [] : D.employees.filter((e) => e.status === "active" || e.status === "invited");
+    const c = D.credits, pct = c ? Math.round((c.used / c.total) * 100) : 0, u = me();
+    const who = `<span class="avatar">${esc(initials(u.name))}</span>
+          <div><b>${esc(LIVE ? u.name : u.role === "admin" ? D.agency + " admin" : u.name)}</b><span>${esc(u.role === "admin" ? "Workspace admin" : u.title)}</span></div>${I.updown}`;
+    const meRow = LIVE
+      ? `<button class="me plain-btn" data-action="account" title="Account, password and sign out">${who}</button>`
+      : `<div class="me" title="Switch person (demo)">${who}
+          <select id="viewer" aria-label="Viewing as (demo)">${people.map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title) + (e.status === "invited" ? " (invited)" : "")}</option>`).join("")}</select>
+        </div>`;
     $("#side").innerHTML = `
       <div class="brandmark"><span class="brandmark-ic">${I.logo}</span><b>tracker</b></div>
       <div class="ws"><span class="ws-ic">${esc(initials(D.agency) || "A")}</span><div><b>${esc(D.agency)}</b><span>${isAdmin() ? "Admin access" : "Team access"}</span></div></div>
@@ -155,24 +164,29 @@
         ${link("connections", I.plug, "Connections")}
       </nav>` : ""}
       <div class="side-foot">
-        ${isAdmin() || can("create") ? `<div class="usage">
+        ${c && (isAdmin() || can("create")) ? `<div class="usage">
           <div class="usage-top"><span>${esc(c.label)} this month</span></div>
           <div class="usage-val num">${c.used.toLocaleString("en-US")}<small>/ ${count(c.total)}</small></div>
           <div class="track"><i style="width:${pct}%"></i></div>
           ${isAdmin() ? '<a href="#connections">Manage credits</a>' : `<span class="sub">${100 - pct}% left</span>`}
         </div>` : ""}
         ${can("assistant") ? `<button class="nav-link plain-btn" data-action="help">${I.help}<span class="lbl">Help & resources</span></button>` : ""}
-        <div class="me" title="Switch person (demo)">
-          <span class="avatar">${esc(initials(u.name))}</span>
-          <div><b>${esc(u.role === "admin" ? D.agency + " admin" : u.name)}</b><span>${esc(u.role === "admin" ? "Workspace admin" : u.title)}</span></div>${I.updown}
-          <select id="viewer" aria-label="Viewing as (demo)">${people.map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title) + (e.status === "invited" ? " (invited)" : "")}</option>`).join("")}</select>
-        </div>
+        ${meRow}
       </div>`;
   }
   function crumbs() {
     const r = state.route;
     if (r.startsWith("brand-")) return ["Brands", brandById(r.slice(6))?.name || "Brand"];
     return { home: ["Workspace", "Home"], news: ["Workspace", "News"], brands: ["Workspace", "Brands"], employees: ["Manage", "Employees"], connections: ["Manage", "Connections"] }[r];
+  }
+  function syncBadge() {
+    const pill = (LIVE ? D.sample : true) ? '<span class="pill warn sample-pill" title="Every brand, number and message is made up">Sample data</span>' : "";
+    if (!LIVE) return `<span class="synced" title="Euka ${stamp(D.lastSync.euka)} · Slack ${stamp(D.lastSync.slack)}"><span class="dot"></span><span>All data synced</span></span>${pill}`;
+    const on = Object.values(D.connections || {}).some(Boolean);
+    return `<span class="synced"><span class="dot ${on ? "" : "off"}"></span><span>${on ? "Connected" : "Euka and Slack not connected"}</span></span>${pill}`;
+  }
+  function previewBar() {
+    return LIVE && D.preview ? `<div class="callout preview-bar"><span>You're seeing Tracker as <b>${esc(D.preview.name)}</b> sees it. Read-only.</span><button class="btn sm" data-action="exit-preview">Exit preview</button></div>` : "";
   }
   function renderTop() {
     const [section, page] = crumbs();
@@ -182,7 +196,7 @@
       <div class="crumbs"><span class="ws-crumb">${section}</span><span class="sep">/</span><b>${esc(page)}</b></div>
       <div class="top-right">
         <div class="search">${I.search}<input id="search" type="search" placeholder="Search anything..." autocomplete="off" aria-label="Search brands, videos and news"><span class="kbd">⌘ K</span><div class="search-results" id="search-results" hidden></div></div>
-        <span class="synced" title="Euka ${stamp(D.lastSync.euka)} · Slack ${stamp(D.lastSync.slack)}"><span class="dot"></span><span>All data synced</span></span>
+        ${syncBadge()}
         ${can("news") ? `<a class="icon-btn" href="#news" aria-label="News${alerts ? `: ${alerts} need action` : ""}">${I.bell}${alerts ? '<span class="badge"></span>' : ""}</a>` : ""}
       </div>`;
   }
@@ -265,7 +279,7 @@
       budget: sum((b) => b.monthlyBudget || 0),
     };
     k.roas = k.spend ? k.gmv / k.spend : 0; k.roasPrev = k.spendPrev ? k.gmvPrev / k.spendPrev : 0;
-    k.ctr = sum((b) => b.kpis.ctr * b.kpis.spend) / (k.spend || 1); k.ctrPrev = sum((b) => b.kpis.ctrPrev * b.kpis.spendPrev) / (k.spendPrev || 1);
+    k.ctr = sum((b) => b.kpis.ctr * b.kpis.videos) / (k.videos || 1); k.ctrPrev = sum((b) => b.kpis.ctrPrev * b.kpis.videosPrev) / (k.videosPrev || 1);
     const ref = brands.find((b) => b.series.length), days = ref ? ref.series.length : 0;
     k.series = Array.from({ length: days }, (_, i) => ({ date: ref.series[i].date, gmv: sum((b) => b.series[i]?.gmv || 0), gmvLast: sum((b) => b.series[i]?.gmvLast || 0), spend: sum((b) => b.series[i]?.spend || 0) }));
     return k;
@@ -355,7 +369,7 @@
     const monthName = first.toLocaleDateString("en-US", { month: "long" });
     const prevMonth = new Date(first.getFullYear(), first.getMonth() - 1, 1).toLocaleDateString("en-US", { month: "long" });
     const up = ((k.gmv - k.gmvPrev) / k.gmvPrev) * 100;
-    const scope = state.homeBrand === "all" ? (isAdmin() || me().brands === "all" ? "all brands" : `your ${all.length} brands`) : brands[0].name;
+    const scope = state.homeBrand === "all" ? (isAdmin() || me().brands === "all" ? "all brands" : `your ${all.length} brand${all.length === 1 ? "" : "s"}`) : brands[0].name;
     const total = brands.reduce((a, b) => a + b.kpis.gmv, 0);
     const single = brands.length === 1;
     const rankRows = single
@@ -636,8 +650,8 @@
           <td><div class="person"><span class="avatar">${esc(initials(e.name))}</span><div><b style="font-weight:600">${esc(e.name)}</b><div class="muted" style="font-size:12.5px">${esc(e.title)} · ${esc(e.email)}</div></div></div></td>
           <td style="max-width:220px">${esc(brandNames(e))}</td>
           <td><div class="perm-list">${e.role === "admin" ? '<span class="pill purple">Full access</span>' : e.perms.length ? e.perms.map((p) => `<span class="pill plain">${PERM_SHORT[p]}</span>`).join("") : '<span class="muted">None</span>'}</div></td>
-          <td>${e.status === "active" ? '<span class="pill good">Active</span>' : '<span class="pill warn">Invite sent</span>'}</td>
-          <td><div class="row-actions">${e.role === "admin" ? '<span class="hint">Owner</span>' : `<button class="btn sm" data-action="edit-perms" data-emp="${e.id}">Permissions</button><button class="btn sm danger" data-action="remove-emp" data-emp="${e.id}">Remove</button>`}</div></td>
+          <td>${e.status === "active" ? '<span class="pill good">Active</span>' : `<span class="pill warn">${LIVE ? "Hasn't signed in yet" : "Invite sent"}</span>`}</td>
+          <td><div class="row-actions">${e.role === "admin" ? '<span class="hint">Owner</span>' : `${LIVE ? `<button class="btn sm" data-action="emp-link" data-emp="${e.id}">Sign-in link</button>` : ""}<button class="btn sm" data-action="edit-perms" data-emp="${e.id}">Permissions</button><button class="btn sm danger" data-action="remove-emp" data-emp="${e.id}">Remove</button>`}</div></td>
         </tr>`).join("")}</tbody>
       </table></div>
       <div class="callout">Only admins can add brands, connect accounts, and manage employees. These rights can't be given to other people.</div>`;
@@ -645,23 +659,26 @@
 
   /* ================= CONNECTIONS (admin) ================= */
   function viewConnections() {
+    const cn = LIVE ? D.connections || {} : { slack: true, euka: true, higgsfield: true, claude: true };
     const svc = [
-      ["S", "Slack", true, "Reads client channels for the News agent. Posts approvals and alerts."],
-      ["E", "Euka", true, "Brands, creators, videos, specs and TikTok Shop results."],
-      ["H", "Higgsfield", true, "Generates new videos from the scripts the agents write."],
-      ["AI", "Claude", true, "Runs the AI assistant and the script, editing and supervisor agents."],
+      ["S", "Slack", cn.slack, "Reads client channels for the News agent. Posts approvals and alerts."],
+      ["E", "Euka", cn.euka, "Brands, creators, videos, specs and TikTok Shop results."],
+      ["H", "Higgsfield", cn.higgsfield, "Generates new videos from the scripts the agents write."],
+      ["AI", "Claude", cn.claude, "Runs the AI assistant and the script, editing and supervisor agents."],
     ];
     return `
       ${topline()}
       <div class="page-head"><div><span class="eyebrow">Admin · Connections</span><h1>Connections</h1><p>Connected once by an admin and shared by everyone, so employees never log in to these services or see the passwords.</p></div></div>
-      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Off</span>'}</div><p>${d}</p></div>`).join("")}</div>
+      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected yet</span>'}</div><p>${d}</p></div>`).join("")}</div>
+      ${LIVE && D.sample ? `<div class="callout warn preview-bar"><span>Tracker is showing <b>sample data</b>: made-up brands, videos and news.</span><button class="btn sm" data-action="clear-sample">Remove sample data</button></div>` : ""}
       <div class="section-head"><h2>Social accounts for posting</h2></div>
+      ${LIVE ? '<p class="muted" style="margin:0">Real posting isn\'t connected yet. For now this switch only controls which accounts employees can pick in a video request.</p>' : ""}
       <div class="table-wrap boxed"><table>
         <thead><tr><th>Brand</th><th>Platform</th><th>Account</th><th>Status</th><th></th></tr></thead>
         <tbody>${D.brands.flatMap((b) => (D.accounts[b.id] || []).map((a, i) => `<tr>
           <td>${esc(b.name)}</td><td>${esc(a.platform)}</td><td class="muted">${esc(a.handle)}</td>
           <td>${a.connected ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected</span>'}</td>
-          <td><div class="row-actions"><button class="btn sm" data-action="toggle-acct" data-brand="${b.id}" data-i="${i}">${a.connected ? "Disconnect" : "Connect"}</button></div></td>
+          <td><div class="row-actions"><button class="btn sm" data-action="toggle-acct" data-brand="${b.id}" data-i="${i}" data-acct="${a.id || ""}">${a.connected ? "Disconnect" : "Connect"}</button></div></td>
         </tr>`)).join("")}</tbody>
       </table></div>`;
   }
@@ -701,7 +718,7 @@
       <form class="form" id="emp-form">
         <div class="field"><label for="emp-name">Full name</label><input id="emp-name" required value="${esc(draft.name || "")}" placeholder="e.g. Alex Morgan"></div>
         <div class="field"><label for="emp-title">Job title</label><input id="emp-title" value="${esc(draft.title || "")}" placeholder="e.g. Media buyer"></div>
-        <div class="field full"><label for="emp-email">Work email</label><input id="emp-email" type="email" required value="${esc(draft.email || "")}" placeholder="name@youragency.com"><span class="hint">They get an invite to sign in to Tracker on their computer.</span></div>
+        <div class="field full"><label for="emp-email">Work email</label><input id="emp-email" type="email" required value="${esc(draft.email || "")}" placeholder="name@youragency.com"><span class="hint">After you set their permissions you get a sign-in link to send them.</span></div>
         <div class="modal-foot span"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary" type="submit">Next: set permissions</button></div>
       </form>`);
     $("#emp-form").addEventListener("submit", (ev) => {
@@ -717,28 +734,31 @@
       <div class="modal-head"><div><div class="steps-ind"><span>Step 2 of 2</span><b>Permissions</b></div><h2>What can ${esc(draft.name.split(" ")[0])} access?</h2><p>Nothing is turned on until you choose it.</p></div><button class="x" data-close aria-label="Close">×</button></div>
       <form class="form" id="perm-form">${permsForm(null)}
         <div class="field full"><div class="callout warn" id="perm-warn" hidden>Pick at least one brand and one permission, or the employee won't be able to see anything.</div></div>
-        <div class="modal-foot span"><button type="button" class="btn ghost" id="perm-back">Back</button><button class="btn primary" type="submit">Add ${esc(draft.name.split(" ")[0])} and send invite</button></div>
+        <div class="modal-foot span"><button type="button" class="btn ghost" id="perm-back">Back</button><button class="btn primary" type="submit">Add ${esc(draft.name.split(" ")[0])}</button></div>
       </form>`);
     $("#perm-back").addEventListener("click", () => addEmployeeStep1(draft));
     $("#perm-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
       const p = readPerms($("#perm-form"));
       if ((p.brands !== "all" && !p.brands.length) || !p.perms.length) { $("#perm-warn").hidden = false; return; }
+      if (LIVE) { change(() => api("POST", "/api/employees", { ...draft, ...p }), (out) => showLink(draft.name, out, true)); return; }
       const id = draft.email.split("@")[0].replace(/\W/g, "") + Date.now().toString(36).slice(-3);
-      // LIVE: create the user in the local database and email the invite.
       D.employees.push({ id, ...draft, role: "employee", status: "invited", ...p });
-      closeOverlays(); render(); toast(`${draft.name} added. Invite sent to ${draft.email}.`);
+      closeOverlays(); render(); toast(`${draft.name} added.`);
     });
   }
   function editPerms(id) {
     const e = D.employees.find((x) => x.id === id);
     openModal(`
-      <div class="modal-head"><div><span class="eyebrow">${esc(e.title)}</span><h2>${esc(e.name)}'s permissions</h2><p>Changes apply the next time they open Tracker.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="modal-head"><div><span class="eyebrow">${esc(e.title)}</span><h2>${esc(e.name)}'s permissions</h2><p>Changes apply the next time they open or reload Tracker.</p></div><button class="x" data-close aria-label="Close">×</button></div>
       <form class="form" id="perm-form">${permsForm(e)}
         <div class="modal-foot span"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary" type="submit">Save permissions</button></div>
       </form>`);
     $("#perm-form").addEventListener("submit", (ev) => {
-      ev.preventDefault(); Object.assign(e, readPerms($("#perm-form"))); closeOverlays(); render(); toast(`Saved ${e.name}'s permissions.`);
+      ev.preventDefault();
+      const p = readPerms($("#perm-form"));
+      if (LIVE) { change(() => api("PATCH", "/api/employees/" + e.id, p), () => { closeOverlays(); toast(`Saved ${e.name}'s permissions.`); }); return; }
+      Object.assign(e, p); closeOverlays(); render(); toast(`Saved ${e.name}'s permissions.`);
     });
   }
   function removeEmp(id) {
@@ -746,15 +766,18 @@
     openModal(`
       <div class="modal-head"><div><h2>Remove ${esc(e.name)}?</h2><p>They lose access to Tracker straight away. Their past video requests stay in the history.</p></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="modal-foot"><button class="btn ghost" data-close>Keep</button><button class="btn danger" id="confirm-remove">Remove ${esc(e.name.split(" ")[0])}</button></div>`);
-    $("#confirm-remove").addEventListener("click", () => { e.status = "removed"; closeOverlays(); render(); toast(`${e.name} was removed.`); });
+    $("#confirm-remove").addEventListener("click", () => {
+      if (LIVE) { closeOverlays(); change(() => api("DELETE", "/api/employees/" + e.id), () => toast(`${e.name} was removed and signed out.`)); return; }
+      e.status = "removed"; closeOverlays(); render(); toast(`${e.name} was removed.`);
+    });
   }
   function addBrand() {
     openModal(`
-      <div class="modal-head"><div><span class="eyebrow">Admin only</span><h2>Add a brand</h2><p>Tracker starts pulling its Euka data and Slack messages at the next sync.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="modal-head"><div><span class="eyebrow">Admin only</span><h2>Add a brand</h2><p>${LIVE ? "Its results and videos appear once Euka and Slack are connected." : "Tracker starts pulling its Euka data and Slack messages at the next sync."}</p></div><button class="x" data-close aria-label="Close">×</button></div>
       <form class="form" id="brand-form">
         <div class="field"><label for="b-name">Brand name</label><input id="b-name" required placeholder="e.g. Solstice Sun Care"></div>
         <div class="field"><label for="b-cat">Category</label><input id="b-cat" placeholder="e.g. Beauty · Sun care"></div>
-        <div class="field"><label for="b-euka">Euka brand</label><select id="b-euka"><option>Solstice Sun Care (found in Euka)</option><option>Northfield Snacks (found in Euka)</option><option>Enter Euka ID manually</option></select></div>
+        <div class="field"><label for="b-euka">Euka brand</label>${LIVE ? '<input id="b-euka" placeholder="Brand name in Euka (optional)">' : '<select id="b-euka"><option>Solstice Sun Care (found in Euka)</option><option>Northfield Snacks (found in Euka)</option><option>Enter Euka ID manually</option></select>'}</div>
         <div class="field"><label for="b-slack">Slack channel</label><input id="b-slack" placeholder="#client-solstice"></div>
         <div class="field"><label for="b-lead">Account lead</label><select id="b-lead">${D.employees.filter((e) => e.status === "active").map((e) => `<option>${esc(e.name)}</option>`).join("")}</select></div>
         <div class="field"><label for="b-budget">Monthly ad budget (USD)</label><input id="b-budget" type="number" min="0" step="500" placeholder="20000"></div>
@@ -764,10 +787,14 @@
     $("#brand-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
       const name = $("#b-name").value.trim();
+      if (LIVE) {
+        const payload = { name, category: $("#b-cat").value, lead: $("#b-lead").value, monthlyBudget: +$("#b-budget").value || 0, goal: $("#b-goal").value, eukaBrand: $("#b-euka").value, slackChannel: $("#b-slack").value };
+        change(() => api("POST", "/api/brands", payload), (out) => { closeOverlays(); go("brand-" + out.id); toast(`${name} added.`); });
+        return;
+      }
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "brand-" + Date.now();
       if (D.brands.some((x) => x.id === id || x.name.toLowerCase() === name.toLowerCase())) { toast(`${name} is already in Tracker.`); $("#b-name").focus(); return; }
       const z = { gmv: 0, gmvPrev: 0, spend: 0, spendPrev: 0, roas: 0, roasPrev: 0, ctr: 0, ctrPrev: 0, creators: 0, creatorsPrev: 0, videos: 0, videosPrev: 0 };
-      // LIVE: save to the database; the next sync fills Euka data and Slack messages.
       D.brands.push({ id, name, category: $("#b-cat").value.trim() || "New brand", lead: $("#b-lead").value, status: "on-track", statusNote: "Waiting for first sync", monthlyBudget: +$("#b-budget").value || 0, goal: $("#b-goal").value.trim() || "Not set yet", kpis: z, series: [], products: [], ads: [], slack: [] });
       D.accounts[id] = [];
       closeOverlays(); go("brand-" + id); toast(`${name} added. Data arrives at the next sync.`);
@@ -800,6 +827,11 @@
       </form>`, true);
     $("#job-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
+      if (LIVE) {
+        const payload = { brand: b.id, product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: $("#j-len").value, variations: +$("#j-var").value, accounts: $$("[name=acct]:checked").map((i) => accts[+i.value].id) };
+        change(() => api("POST", "/api/jobs", payload), (out) => openJob(out.id));
+        return;
+      }
       const job = {
         id: "VR-" + (101 + state.jobs.length), brand: b.id, by: me().name, created: new Date().toISOString(),
         product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: $("#j-len").value, variations: +$("#j-var").value,
@@ -862,6 +894,7 @@
     const b = brandById(job.brand);
     const statusPill = { running: '<span class="pill purple">Agents working</span>', review: '<span class="pill warn">Ready for review</span>', approval: '<span class="pill warn">Waiting for approval</span>', posted: '<span class="pill good">Published</span>' }[job.status];
     return `
+      ${job.simulated ? '<div class="callout warn">Simulation: Higgsfield isn\'t connected yet, so no video is created and nothing is posted.</div>' : ""}
       <div class="agents">${job.steps.map((s, i) => { const a = AGENTS[i]; return `
         <div class="agent ${stepClass(s)}"><span class="agent-ic">${a.icon}</span>
           <div class="agent-main">
@@ -919,6 +952,11 @@
   }
   function jobAction(act) {
     const job = state.jobs.find((j) => j.id === state.openJob); if (!job) return;
+    if (LIVE) {
+      const id = job.id, said = { approve: "Marked as published (simulation).", send: "Sent for approval." }[act];
+      change(() => api("POST", `/api/jobs/${id}/action`, { action: act }), () => { openJob(id); if (said) toast(said); });
+      return;
+    }
     if (act === "approve") {
       // LIVE: publish through the brand's connected social accounts.
       job.status = "posted"; logLine(job, "Supervisor", `Approved by ${me().name}. Published to ${job.accounts.map((a) => a.platform).join(", ")}.`); toast("Video published (demo).");
@@ -989,7 +1027,7 @@
     if (a.hidden) return;
     if (!state.chat.length) state.chat.push({ who: "ai", text: `Hi ${me().name.split(" ")[0]}, I'm Tracker AI. Ask me about your brands, results, news, or how anything in the dashboard works.` });
     a.innerHTML = `
-      <div class="as-head"><span class="bot" style="width:34px;height:34px">${I.spark}</span><div><b>Tracker AI</b><small>Answers from your dashboard · demo</small></div><button class="x" id="as-close" aria-label="Close assistant">×</button></div>
+      <div class="as-head"><span class="bot" style="width:34px;height:34px">${I.spark}</span><div><b>Tracker AI</b><small>${LIVE ? "Prepared answers until Claude is connected" : "Answers from your dashboard · demo"}</small></div><button class="x" id="as-close" aria-label="Close assistant">×</button></div>
       <div class="as-msgs" id="as-msgs">${state.chat.map((m) => `<div class="bubble ${m.who === "me" ? "me" : "ai"} ${m.typing ? "typing" : ""}">${m.typing ? "Thinking…" : fmt(m.text)}</div>`).join("")}</div>
       ${state.chat.length < 3 ? `<div class="as-sugg">${["How are all brands doing?", "Which brands need attention?", "How do I post a new video?", "What can I access?"].map((x) => `<button data-sugg="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : ""}
       <form class="as-form" id="as-form"><input id="as-input" placeholder="Ask about brands, results or the dashboard" autocomplete="off" aria-label="Message Tracker AI"><button class="btn primary" aria-label="Send">${I.send}</button></form>`;
@@ -1006,14 +1044,176 @@
     }, 650);
   }
 
+  /* ================= live mode: server, sign-in, saving ================= */
+  // When Tracker is opened through its local server, everything below talks to
+  // that server. Opened as a plain file (or as the web preview) it stays a demo.
+  async function api(method, path, body) {
+    const as = state.previewAs && method === "GET" ? (path.includes("?") ? "&" : "?") + "as=" + encodeURIComponent(state.previewAs) : "";
+    const opts = { method, credentials: "same-origin" };
+    if (method !== "GET") { opts.headers = { "Content-Type": "application/json" }; opts.body = JSON.stringify(body || {}); }
+    const res = await fetch(path + as, opts);
+    let json = {};
+    try { json = await res.json(); } catch (_) {}
+    if (!res.ok) { const e = new Error(json.error || "Something went wrong. Try again."); e.status = res.status; throw e; }
+    return json;
+  }
+  // Load everything this person is allowed to see, or show the right sign-in screen.
+  async function sync() {
+    let s;
+    try { s = await api("GET", "/api/session"); }
+    catch (e) {
+      if (state.previewAs) { state.previewAs = null; return sync(); }
+      gate("offline"); return false;
+    }
+    if (s.needsSetup) { gate("setup"); return false; }
+    if (!s.state) { D = null; gate("login", s); return false; }
+    D = s.state; state.user = D.me.id; state.jobs = D.jobs;
+    ungate(); pollJobs();
+    return true;
+  }
+  // Run a change on the server, then reload what's on screen.
+  async function change(fn, done) {
+    if (state.previewAs) { toast("Preview is read-only. Exit the preview to make changes."); return false; }
+    try {
+      const out = await fn();
+      if (await sync()) { render(); if (done) done(out); }
+      return true;
+    } catch (e) {
+      toast(e.message);
+      if (e.status === 401) await sync();
+      return false;
+    }
+  }
+  let poller = null;
+  function pollJobs() {
+    if (poller || !state.jobs.some((j) => j.status === "running")) return;
+    poller = setInterval(async () => {
+      try { state.jobs = (await api("GET", "/api/jobs")).jobs; if (D) D.jobs = state.jobs; refreshJobs(); } catch (_) {}
+      if (!state.jobs.some((j) => j.status === "running")) { clearInterval(poller); poller = null; }
+    }, 800);
+  }
+
+  function ungate() { document.body.classList.remove("gated"); $("#gate").hidden = true; }
+  function gate(kind, info = {}) {
+    document.body.classList.add("gated");
+    closeOverlays();
+    const g = $("#gate"); g.hidden = false;
+    const shell = (title, sub, form) => `<div class="gate-card"><div class="brandmark"><span class="brandmark-ic">${I.logo}</span><b>tracker</b></div>
+      <div><h1>${title}</h1><p class="muted" style="margin:6px 0 0">${sub}</p></div>${form}<div class="callout warn" id="gate-error" role="alert" hidden></div></div>`;
+    if (kind === "offline") {
+      g.innerHTML = shell("Can't reach Tracker", "The Tracker server isn't answering. Check that it's still running on the office computer, then try again.", `<button class="btn primary" id="gate-retry">Try again</button>`);
+      $("#gate-retry").addEventListener("click", async () => { if (await sync()) render(); });
+      return;
+    }
+    if (kind === "setup") {
+      g.innerHTML = shell("Set up Tracker", "This creates the admin account. The admin adds everyone else.", `
+        <form class="form" id="gate-form" style="grid-template-columns:1fr">
+          <div class="field"><label for="g-agency">Agency name</label><input id="g-agency" required maxlength="80" autocomplete="organization"></div>
+          <div class="field"><label for="g-name">Your name</label><input id="g-name" required maxlength="80" autocomplete="name"></div>
+          <div class="field"><label for="g-email">Your email</label><input id="g-email" type="email" required autocomplete="username"></div>
+          <div class="field"><label for="g-pass">Password</label><input id="g-pass" type="password" required minlength="8" autocomplete="new-password"><span class="hint">At least 8 characters.</span></div>
+          <label class="check"><input type="checkbox" id="g-sample" checked><div><b>Start with sample brands</b><span>Made-up brands and numbers so you can look around. Remove them in one click later.</span></div></label>
+          <button class="btn primary" type="submit">Create admin account</button>
+        </form>`);
+      $("#gate-form").addEventListener("submit", (ev) => gateSubmit(ev, () => api("POST", "/api/setup", { agency: $("#g-agency").value, name: $("#g-name").value, email: $("#g-email").value, password: $("#g-pass").value, sample: $("#g-sample").checked })));
+      $("#g-agency").focus();
+      return;
+    }
+    if (kind === "link") {
+      g.innerHTML = shell(`Welcome, ${esc(info.name.split(" ")[0])}`, `Choose a password for ${esc(info.email)} to open ${esc(info.agency)}'s Tracker.`, `
+        <form class="form" id="gate-form" style="grid-template-columns:1fr">
+          <input type="email" value="${esc(info.email)}" autocomplete="username" hidden>
+          <div class="field"><label for="g-pass">New password</label><input id="g-pass" type="password" required minlength="8" autocomplete="new-password"><span class="hint">At least 8 characters.</span></div>
+          <button class="btn primary" type="submit">Save password and open Tracker</button>
+        </form>`);
+      $("#gate-form").addEventListener("submit", (ev) => gateSubmit(ev, async () => { await api("POST", "/api/link/" + info.token, { password: $("#g-pass").value }); history.replaceState(null, "", "/"); }));
+      $("#g-pass").focus();
+      return;
+    }
+    if (kind === "badlink") {
+      g.innerHTML = shell("This link doesn't work", esc(info.message), `<a class="btn" href="/">Go to sign in</a>`);
+      return;
+    }
+    g.innerHTML = shell("Sign in", `to ${esc(info.agency || "your agency")}'s Tracker`, `
+      <form class="form" id="gate-form" style="grid-template-columns:1fr">
+        <div class="field"><label for="g-email">Email</label><input id="g-email" type="email" required autocomplete="username"></div>
+        <div class="field"><label for="g-pass">Password</label><input id="g-pass" type="password" required autocomplete="current-password"></div>
+        <button class="btn primary" type="submit">Sign in</button>
+        <span class="hint">Forgot your password? Ask your admin for a new sign-in link.</span>
+      </form>`);
+    $("#gate-form").addEventListener("submit", (ev) => gateSubmit(ev, () => api("POST", "/api/login", { email: $("#g-email").value, password: $("#g-pass").value })));
+    $("#g-email").focus();
+  }
+  async function gateSubmit(ev, send) {
+    ev.preventDefault();
+    const btn = $("#gate-form button[type=submit]"), err = $("#gate-error");
+    btn.disabled = true; err.hidden = true;
+    try { await send(); if (await sync()) render(); }
+    catch (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; }
+  }
+
+  function showLink(name, out, isNew) {
+    const link = out.link;
+    openModal(`
+      <div class="modal-head"><div><h2>${isNew ? `${esc(name)} is added` : `Sign-in link for ${esc(name)}`}</h2><p>Send ${esc(name.split(" ")[0])} this link. It lets them choose their own password. It works once and expires in 7 days.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="field"><label for="link-out">Sign-in link</label><input id="link-out" readonly value="${esc(link)}"></div>
+      ${out.reachable === false ? '<div class="callout warn">Right now Tracker can only be opened on this computer, so this link won\'t work on theirs. Restart Tracker in office mode (see the README) and make a new link from Employees → Sign-in link.</div>' : '<div class="callout">Tracker doesn\'t send emails. Copy the link and send it yourself, for example in a Slack message.</div>'}
+      <div class="modal-foot"><button class="btn" data-close>Done</button><button class="btn primary" id="copy-link">Copy link</button></div>`);
+    const input = $("#link-out"); input.focus(); input.select();
+    $("#copy-link").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(link); toast("Link copied."); }
+      catch (_) { input.focus(); input.select(); toast("Press Ctrl+C or ⌘C to copy the link."); }
+    });
+  }
+  function accountMenu() {
+    const u = D.me, pv = D.previewable || [];
+    openModal(`
+      <div class="modal-head"><div><h2>${esc(u.name)}</h2><p>${esc(u.email)} · ${u.role === "admin" ? "Admin" : esc(u.title)}</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      ${pv.length ? `<div class="field"><label for="preview-pick">See Tracker as an employee (read-only)</label>
+        <select id="preview-pick"><option value="">Choose a person</option>${pv.map((e) => `<option value="${e.id}">${esc(e.name)} · ${esc(e.title)}</option>`).join("")}</select></div>` : ""}
+      ${D.preview ? "" : `<form class="form" id="pass-form" style="grid-template-columns:1fr">
+        <input type="email" value="${esc(u.email)}" autocomplete="username" hidden>
+        <div class="field"><label for="p-cur">Current password</label><input id="p-cur" type="password" required autocomplete="current-password"></div>
+        <div class="field"><label for="p-new">New password</label><input id="p-new" type="password" required minlength="8" autocomplete="new-password"><span class="hint">At least 8 characters.</span></div>
+        <div class="modal-foot"><button class="btn" type="submit">Change password</button></div>
+      </form>`}
+      <div class="modal-foot" style="border-top:1px solid var(--line);padding-top:14px"><button class="btn danger" id="sign-out">Sign out</button></div>`);
+    const pick = $("#preview-pick");
+    if (pick) pick.addEventListener("change", async () => { state.previewAs = pick.value || null; closeOverlays(); if (await sync()) { go("home"); render(); } });
+    const pf = $("#pass-form");
+    if (pf) pf.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      try { await api("POST", "/api/password", { current: $("#p-cur").value, next: $("#p-new").value }); closeOverlays(); toast("Password changed."); }
+      catch (e) { toast(e.message); }
+    });
+    $("#sign-out").addEventListener("click", async () => { state.previewAs = null; state.chat = []; state.chatOpen = false; try { await api("POST", "/api/logout"); } catch (_) {} await sync(); });
+  }
+  async function exitPreview() { state.previewAs = null; if (await sync()) { go("employees"); render(); } }
+  function confirmClearSample() {
+    openModal(`
+      <div class="modal-head"><div><h2>Remove the sample data?</h2><p>This deletes the made-up brands, their videos, news and video requests. Brands you added yourself, and all employees, stay.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="modal-foot"><button class="btn ghost" data-close>Keep it</button><button class="btn danger" id="confirm-clear">Remove sample data</button></div>`);
+    $("#confirm-clear").addEventListener("click", () => { closeOverlays(); change(() => api("POST", "/api/sample/clear"), () => { go("brands"); toast("Sample data removed."); }); });
+  }
+  async function boot() {
+    const m = location.hash.match(/^#link-([\w-]+)$/);
+    if (m) {
+      try { const info = await api("GET", "/api/link/" + m[1]); gate("link", { ...info, token: m[1] }); }
+      catch (e) { gate("badlink", { message: e.message }); }
+      return;
+    }
+    if (await sync()) render();
+  }
+
   /* ================= render + events ================= */
   function render() {
+    if (!D) return;
     state.route = parseRoute();
     if (!allowed(state.route)) { location.hash = "home"; return; }
     renderSide();
     renderTop();
     const r = state.route;
-    $("#work").innerHTML = r === "news" ? viewNews() : r === "brands" ? viewBrands() : r === "employees" ? viewEmployees() : r === "connections" ? viewConnections() : r.startsWith("brand-") ? viewBrand(r.slice(6)) : viewHome();
+    $("#work").innerHTML = previewBar() + (r === "news" ? viewNews() : r === "brands" ? viewBrands() : r === "employees" ? viewEmployees() : r === "connections" ? viewConnections() : r.startsWith("brand-") ? viewBrand(r.slice(6)) : viewHome());
     const b = r.startsWith("brand-") && brandById(r.slice(6));
     document.title = (b ? b.name : { home: "Home", news: "News", brands: "Brands", employees: "Employees", connections: "Connections" }[r]) + " · Tracker";
     renderAssistant();
@@ -1028,7 +1228,22 @@
   }
   try { if (localStorage.getItem("tracker-collapsed") === "1") document.body.classList.add("collapsed"); } catch (_) {}
 
-  window.addEventListener("hashchange", () => { state.videoFilter = "all"; state.tablePage = 1; setNavOpen(false); closeOverlays(); render(); window.scrollTo({ top: 0 }); });
+  window.addEventListener("hashchange", () => {
+    if (LIVE && /^#link-/.test(location.hash)) return boot(); // a sign-in link opened in an already-open tab
+    state.videoFilter = "all"; state.tablePage = 1; setNavOpen(false); closeOverlays();
+    const show = () => { render(); window.scrollTo({ top: 0 }); };
+    // On the server, pick up what other people changed each time you move to another page.
+    if (LIVE) sync().then((ok) => ok && show()); else show();
+  });
+  // ...and when you come back to the Tracker tab, as long as you're not in the middle of something.
+  function quietRefresh() {
+    if (!LIVE || !D || document.hidden || !$("#modal").hidden || !$("#drawer").hidden || state.chatOpen) return;
+    if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+    const before = JSON.stringify(D);
+    sync().then((ok) => ok && JSON.stringify(D) !== before && render());
+  }
+  document.addEventListener("visibilitychange", quietRefresh);
+  if (LIVE) setInterval(quietRefresh, 30000); // and every 30 seconds while the page is simply open
   document.addEventListener("change", (e) => {
     const id = e.target.id;
     if (id === "viewer") { state.user = e.target.value; state.chat = []; state.homeBrand = "all"; state.newsBrand = "all"; state.tablePage = 1; render(); toast(`Now viewing as ${me().name}.`); }
@@ -1089,6 +1304,11 @@
     else if (act === "export") exportReport();
     else if (act === "help") { setNavOpen(false); ask("How do I use Tracker?"); }
     else if (act === "table-search") { state.tableSearch = !state.tableSearch; if (!state.tableSearch) state.tableQuery = ""; refreshTable(); }
+    else if (act === "account") accountMenu();
+    else if (act === "exit-preview") exitPreview();
+    else if (act === "clear-sample") confirmClearSample();
+    else if (act === "emp-link") change(() => api("POST", `/api/employees/${t.dataset.emp}/link`), (out) => showLink(out.name, out, false));
+    else if (act === "toggle-acct" && LIVE) change(() => api("POST", `/api/accounts/${t.dataset.acct}/toggle`), (a) => toast(`${a.platform} ${a.handle} ${a.connected ? "turned on" : "turned off"}.`));
     else if (act === "toggle-acct") { const a = D.accounts[t.dataset.brand][+t.dataset.i]; a.connected = !a.connected; render(); toast(`${a.platform} ${a.handle} ${a.connected ? "connected" : "disconnected"} (demo).`); }
   });
   $("#scrim").addEventListener("click", closeOverlays);
@@ -1104,5 +1324,5 @@
     else if (state.chatOpen) { state.chatOpen = false; renderAssistant(); }
   });
 
-  render();
+  if (LIVE) boot(); else render();
 })();
