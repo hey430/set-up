@@ -140,11 +140,11 @@
     const r = navKey();
     const link = (id, icon, label, extra = "") => `<a class="nav-link" href="#${id}" aria-current="${r === id ? "page" : "false"}" title="${label}">${icon}<span class="lbl">${label}</span>${extra}</a>`;
     const fresh = D.news.filter((n) => brandOk(n.brand)).length;
-    const people = D.employees.filter((e) => e.status === "active");
+    const people = D.employees.filter((e) => e.status === "active" || e.status === "invited");
     const c = D.credits, pct = Math.round((c.used / c.total) * 100), u = me();
     $("#side").innerHTML = `
       <div class="brandmark"><span class="brandmark-ic">${I.logo}</span><b>tracker</b></div>
-      <div class="ws"><span class="ws-ic">${esc(initials(D.agency) || "A")}</span><div><b>${esc(D.agency)}</b><span>${isAdmin() ? "Admin access" : "Team access"}</span></div>${I.updown}</div>
+      <div class="ws"><span class="ws-ic">${esc(initials(D.agency) || "A")}</span><div><b>${esc(D.agency)}</b><span>${isAdmin() ? "Admin access" : "Team access"}</span></div></div>
       <nav class="nav-group" aria-label="Workspace"><span class="eyebrow">Workspace</span>
         ${link("home", I.home, "Home")}
         ${can("news") ? link("news", I.news, "News", `<span class="count">${fresh}</span>`) : ""}
@@ -156,7 +156,7 @@
       </nav>` : ""}
       <div class="side-foot">
         ${isAdmin() || can("create") ? `<div class="usage">
-          <div class="usage-top"><span>${esc(c.label)} this month</span>${I.info}</div>
+          <div class="usage-top"><span>${esc(c.label)} this month</span></div>
           <div class="usage-val num">${c.used.toLocaleString("en-US")}<small>/ ${count(c.total)}</small></div>
           <div class="track"><i style="width:${pct}%"></i></div>
           ${isAdmin() ? '<a href="#connections">Manage credits</a>' : `<span class="sub">${100 - pct}% left</span>`}
@@ -165,7 +165,7 @@
         <div class="me" title="Switch person (demo)">
           <span class="avatar">${esc(initials(u.name))}</span>
           <div><b>${esc(u.role === "admin" ? D.agency + " admin" : u.name)}</b><span>${esc(u.role === "admin" ? "Workspace admin" : u.title)}</span></div>${I.updown}
-          <select id="viewer" aria-label="Viewing as (demo)">${people.map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title)}</option>`).join("")}</select>
+          <select id="viewer" aria-label="Viewing as (demo)">${people.map((e) => `<option value="${e.id}" ${e.id === state.user ? "selected" : ""}>${e.role === "admin" ? "Admin" : esc(e.name) + " · " + esc(e.title) + (e.status === "invited" ? " (invited)" : "")}</option>`).join("")}</select>
         </div>
       </div>`;
   }
@@ -325,9 +325,8 @@
         </div>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th style="width:34px"><input type="checkbox" aria-label="Select all"></th><th>Video</th><th>Status</th>${s ? '<th class="r">Spend</th>' : ""}<th class="r">Views</th><th class="r">GMV ↓</th><th class="r">CTR</th>${s ? '<th class="r">ROAS</th>' : ""}<th style="width:36px"></th></tr></thead>
+        <thead><tr><th>Video</th><th>Status</th>${s ? '<th class="r">Spend</th>' : ""}<th class="r">Views</th><th class="r">GMV ↓</th><th class="r">CTR</th>${s ? '<th class="r">ROAS</th>' : ""}<th style="width:36px"></th></tr></thead>
         <tbody>${page.map(({ a, b }) => `<tr class="clickable" data-video="${a.id}" data-brand="${b.id}">
-          <td><input type="checkbox" aria-label="Select ${esc(a.title)}"></td>
           <td><div class="cell-main"><span class="cell-ic">${icon(a)}</span><div><b>${esc(a.title)}</b><span>${esc(b.name)} · ${esc(a.creator)}</span></div></div></td>
           <td><span class="status ${a.status}">${VSTATUS[a.status]}</span></td>
           ${s ? `<td class="r">${a.spend ? moneyFull(a.spend) : "–"}</td>` : ""}
@@ -335,7 +334,7 @@
           <td class="r"><b style="font-weight:600">${a.gmv ? moneyFull(a.gmv) : "–"}</b></td>
           <td class="r">${a.ctr ? a.ctr.toFixed(2) + "%" : "–"}</td>
           ${s ? `<td class="r" style="color:${a.roas >= 4 ? "var(--purple-hi)" : "inherit"}">${a.roas ? a.roas.toFixed(1) + "×" : "–"}</td>` : ""}
-          <td class="r" style="color:var(--dim)">${I.dots}</td></tr>`).join("") || `<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">No videos match.</td></tr>`}</tbody>
+          <td class="r" style="color:var(--dim)">${I.chevR}</td></tr>`).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">No videos match.</td></tr>`}</tbody>
       </table></div>
       <div class="table-foot"><span>Showing ${page.length} of ${rows.length} videos</span>
         <div class="pager"><button class="icon-btn" data-page="prev" aria-label="Previous page" ${state.tablePage <= 1 ? "disabled" : ""}>${I.chevL}</button><span class="num">${state.tablePage} / ${pages}</span><button class="icon-btn" data-page="next" aria-label="Next page" ${state.tablePage >= pages ? "disabled" : ""}>${I.chevR}</button></div></div>`;
@@ -451,6 +450,7 @@
   /* ================= NEWS ================= */
   function viewNews() {
     const all = D.news.filter((n) => brandOk(n.brand)).sort((a, z) => z.time.localeCompare(a.time));
+    if (state.newsBrand !== "all" && !brandOk(state.newsBrand)) state.newsBrand = "all";
     const list = all.filter((n) => (state.newsType === "all" || n.type === state.newsType) && (state.newsBrand === "all" || n.brand === state.newsBrand));
     const days = {};
     list.forEach((n) => { (days[n.time.slice(0, 10)] = days[n.time.slice(0, 10)] || []).push(n); });
@@ -706,6 +706,9 @@
       </form>`);
     $("#emp-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
+      const mail = $("#emp-email").value.trim().toLowerCase();
+      const taken = D.employees.find((x) => x.status !== "removed" && x.email.toLowerCase() === mail);
+      if (taken) { toast(`${taken.name} already uses ${mail}.`); $("#emp-email").focus(); return; }
       addEmployeeStep2({ name: $("#emp-name").value.trim(), title: $("#emp-title").value.trim() || "Team member", email: $("#emp-email").value.trim() });
     });
   }
@@ -762,6 +765,7 @@
       ev.preventDefault();
       const name = $("#b-name").value.trim();
       const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "brand-" + Date.now();
+      if (D.brands.some((x) => x.id === id || x.name.toLowerCase() === name.toLowerCase())) { toast(`${name} is already in Tracker.`); $("#b-name").focus(); return; }
       const z = { gmv: 0, gmvPrev: 0, spend: 0, spendPrev: 0, roas: 0, roasPrev: 0, ctr: 0, ctrPrev: 0, creators: 0, creatorsPrev: 0, videos: 0, videosPrev: 0 };
       // LIVE: save to the database; the next sync fills Euka data and Slack messages.
       D.brands.push({ id, name, category: $("#b-cat").value.trim() || "New brand", lead: $("#b-lead").value, status: "on-track", statusNote: "Waiting for first sync", monthlyBudget: +$("#b-budget").value || 0, goal: $("#b-goal").value.trim() || "Not set yet", kpis: z, series: [], products: [], ads: [], slack: [] });
@@ -874,7 +878,7 @@
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(job.product)} · ${esc(job.length)}</b>${statusPill}</div>
           <div class="script">${esc(`Hook: ${job.hook}\nBeat 1: Show the everyday problem in a quick close-up.\nBeat 2: ${job.product} in use, real hands, natural light.\nBeat 3: The result, then "Shop now" with the brand end card.`)}</div>
           ${job.status === "posted" ? `<span class="muted" style="font-size:13px">Published to ${job.accounts.map((a) => esc(a.platform + " " + a.handle)).join(", ") || "no accounts"}. Results appear in News once Euka picks it up.</span>`
-            : job.status === "approval" ? `<span class="muted" style="font-size:13px">Sent to an approver. They'll see it in this brand's video requests.</span>${can("approve") ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-job-act="approve">${I.send} Approve and publish</button></div>` : ""}`
+            : job.status === "approval" ? `<span class="muted" style="font-size:13px">Sent to an approver. They'll see it in this brand's video requests.</span>${can("approve") ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} Approve and publish</button></div>${job.accounts.length ? "" : '<span class="hint">No posting account was selected for this request.</span>'}` : ""}`
             : `<div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${can("approve") ? `<button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} Approve and publish</button>` : `<button class="btn primary" data-job-act="send">${I.send} Send for approval</button>`}
                 <button class="btn" data-job-act="revise">Request changes</button></div>
@@ -1027,7 +1031,7 @@
   window.addEventListener("hashchange", () => { state.videoFilter = "all"; state.tablePage = 1; setNavOpen(false); closeOverlays(); render(); window.scrollTo({ top: 0 }); });
   document.addEventListener("change", (e) => {
     const id = e.target.id;
-    if (id === "viewer") { state.user = e.target.value; state.chat = []; state.homeBrand = "all"; render(); toast(`Now viewing as ${me().name}.`); }
+    if (id === "viewer") { state.user = e.target.value; state.chat = []; state.homeBrand = "all"; state.newsBrand = "all"; state.tablePage = 1; render(); toast(`Now viewing as ${me().name}.`); }
     if (id === "news-brand") { state.newsBrand = e.target.value; render(); }
     if (id === "home-brand") { state.homeBrand = e.target.value; state.tablePage = 1; render(); }
     if (id === "chart-mode") { state.chartMode = e.target.value; render(); }
