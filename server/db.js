@@ -38,6 +38,14 @@ function open(file) {
       platform TEXT NOT NULL, handle TEXT NOT NULL, connected INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE, time TEXT NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS charges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id TEXT NOT NULL, brand_id TEXT NOT NULL, user_id TEXT NOT NULL, user_name TEXT NOT NULL, tier TEXT NOT NULL,
+      credits REAL NOT NULL,
+      status TEXT NOT NULL,                 -- reserved | spent | released
+      simulated INTEGER NOT NULL DEFAULT 0, -- 1 = practice run made while Higgsfield wasn't connected
+      created_at INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE, status TEXT NOT NULL, created_at INTEGER NOT NULL, data TEXT NOT NULL);
   `);
 

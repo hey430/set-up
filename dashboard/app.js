@@ -143,7 +143,7 @@
     const link = (id, icon, label, extra = "") => `<a class="nav-link" href="#${id}" aria-current="${r === id ? "page" : "false"}" title="${label}">${icon}<span class="lbl">${label}</span>${extra}</a>`;
     const fresh = D.news.filter((n) => brandOk(n.brand)).length;
     const people = LIVE ? [] : D.employees.filter((e) => e.status === "active" || e.status === "invited");
-    const c = D.credits, pct = c ? Math.round((c.used / c.total) * 100) : 0, u = me();
+    const u = me();
     const who = `<span class="avatar">${esc(initials(u.name))}</span>
           <div><b>${esc(LIVE ? u.name : u.role === "admin" ? D.agency + " admin" : u.name)}</b><span>${esc(u.role === "admin" ? "Workspace admin" : u.title)}</span></div>${I.updown}`;
     const meRow = LIVE
@@ -164,12 +164,7 @@
         ${link("connections", I.plug, "Connections")}
       </nav>` : ""}
       <div class="side-foot">
-        ${c && (isAdmin() || can("create")) ? `<div class="usage">
-          <div class="usage-top"><span>${esc(c.label)} this month</span></div>
-          <div class="usage-val num">${c.used.toLocaleString("en-US")}<small>/ ${count(c.total)}</small></div>
-          <div class="track"><i style="width:${pct}%"></i></div>
-          ${isAdmin() ? '<a href="#connections">Manage credits</a>' : `<span class="sub">${100 - pct}% left</span>`}
-        </div>` : ""}
+        ${creditsCard()}
         ${can("assistant") ? `<button class="nav-link plain-btn" data-action="help">${I.help}<span class="lbl">Help & resources</span></button>` : ""}
         ${meRow}
       </div>`;
@@ -182,8 +177,9 @@
   function syncBadge() {
     const pill = (LIVE ? D.sample : true) ? '<span class="pill warn sample-pill" title="Every brand, number and message is made up">Sample data</span>' : "";
     if (!LIVE) return `<span class="synced" title="Euka ${stamp(D.lastSync.euka)} · Slack ${stamp(D.lastSync.slack)}"><span class="dot"></span><span>All data synced</span></span>${pill}`;
-    const on = Object.values(D.connections || {}).some(Boolean);
-    return `<span class="synced"><span class="dot ${on ? "" : "off"}"></span><span>${on ? "Connected" : "Euka and Slack not connected"}</span></span>${pill}`;
+    const cn = D.connections || {}, names = { higgsfield: "Higgsfield", euka: "Euka", slack: "Slack", claude: "Claude" };
+    const on = Object.keys(names).filter((k) => cn[k]).map((k) => names[k]);
+    return `<span class="synced" title="See Connections"><span class="dot ${on.length ? "" : "off"}"></span><span>${on.length ? on.join(", ") + " connected" : "Nothing connected yet"}</span></span>${pill}`;
   }
   function previewBar() {
     return LIVE && D.preview ? `<div class="callout preview-bar"><span>You're seeing Tracker as <b>${esc(D.preview.name)}</b> sees it. Read-only.</span><button class="btn sm" data-action="exit-preview">Exit preview</button></div>` : "";
@@ -658,6 +654,45 @@
   }
 
   /* ================= CONNECTIONS (admin) ================= */
+  function higgsfieldControls(on) {
+    const c = D.credits || {};
+    return on
+      ? `<span class="sub">${c.plan ? esc(c.plan[0].toUpperCase() + c.plan.slice(1)) + " plan · " : ""}${c.balance === null || c.balance === undefined ? "balance not read yet" : fmtC(c.balance) + " credits"}</span><div><button class="btn sm" data-action="hf-disconnect">Disconnect</button></div>`
+      : `<div><button class="btn sm primary" data-action="hf-connect">Connect Higgsfield</button></div><span class="hint">You sign in on Higgsfield's own page. Do this on the computer that runs Tracker.</span>`;
+  }
+  function budgetCard() {
+    const c = D.credits; if (!c) return "";
+    const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `<section class="card" id="budget">
+      <div class="card-head"><div><h2>Credit budget</h2><span class="sub">Makes a month of Higgsfield credits last the month.${c.connected ? "" : " Higgsfield isn't connected, so these numbers are a practice budget."}</span></div></div>
+      <div class="hs-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="hs"><b>${fmtC(c.left)}</b><span>${c.connected ? "Credits left in Higgsfield" : "Credits left (practice)"}</span></div>
+        <div class="hs"><b>${fmtC(c.weekLeft)}</b><span>Left this week of ${fmtC(c.weekAllowance)}</span></div>
+        <div class="hs"><b>${fmtC(c.reserve)}</b><span>Admin reserve</span></div>
+        <div class="hs"><b>${day(c.renewsOn)}</b><span>Renews · ${c.daysLeft} day${c.daysLeft === 1 ? "" : "s"} away</span></div>
+      </div>
+      <form class="form" id="budget-form" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div class="field"><label for="bd-monthly">Credits each month</label><input id="bd-monthly" type="number" min="1" step="1" required value="${c.monthly}"></div>
+        <div class="field"><label for="bd-day">Day of the month they renew</label><input id="bd-day" type="number" min="1" max="31" step="1" required value="${c.renewDay}"></div>
+        <div class="field"><label for="bd-reserve">Admin reserve (%)</label><input id="bd-reserve" type="number" min="0" max="50" step="1" required value="${c.reservePct}"></div>
+        <div class="field"><label for="bd-cap">Most one request can cost</label><input id="bd-cap" type="number" min="1" step="0.5" required value="${c.requestCap}"></div>
+        <div class="modal-foot span"><button class="btn primary" type="submit">Save budget</button></div>
+      </form>
+      <div class="grid-2 top" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+        <div style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow">How it works</span>
+          <ul class="plain-list">
+            <li>Each week the team can use a fair share of what's left until renewal. This week that is <b>${fmtC(c.weekAllowance)}</b>; unused credits carry over.</li>
+            <li>Credits spent directly in Higgsfield lower the allowance automatically.</li>
+            <li>The last <b>${fmtC(c.reserve)}</b> are kept for you. As admin you can also go past the weekly pace.</li>
+            <li>A new version of a video costs the same as the first one.</li>
+          </ul></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow">What a 15-second video costs</span>
+          <div class="side-list">${c.tiers.map((t) => `<div><span><b style="font-weight:600">${esc(t.label)}</b> <span class="sub">${esc(t.note)}</span></span><b class="num" style="white-space:nowrap">${fmtC(t.perSec * 15)}</b></div>`).join("")}</div>
+          ${(c.byBrand || []).length ? `<span class="eyebrow" style="margin-top:8px">Used since the last renewal</span><div class="side-list">${c.byBrand.map((r) => `<div><span>${esc(r.name)} <span class="sub">${r.requests} request${r.requests === 1 ? "" : "s"}</span></span><b class="num">${fmtC(r.credits)}</b></div>`).join("")}</div>` : ""}
+        </div>
+      </div>
+    </section>`;
+  }
   function viewConnections() {
     const cn = LIVE ? D.connections || {} : { slack: true, euka: true, higgsfield: true, claude: true };
     const svc = [
@@ -669,7 +704,8 @@
     return `
       ${topline()}
       <div class="page-head"><div><span class="eyebrow">Admin · Connections</span><h1>Connections</h1><p>Connected once by an admin and shared by everyone, so employees never log in to these services or see the passwords.</p></div></div>
-      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected yet</span>'}</div><p>${d}</p></div>`).join("")}</div>
+      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected yet</span>'}</div><p>${d}</p>${n === "Higgsfield" && LIVE ? higgsfieldControls(on) : ""}</div>`).join("")}</div>
+      ${budgetCard()}
       ${LIVE && D.sample ? `<div class="callout warn preview-bar"><span>Tracker is showing <b>sample data</b>: made-up brands, videos and news.</span><button class="btn sm" data-action="clear-sample">Remove sample data</button></div>` : ""}
       <div class="section-head"><h2>Social accounts for posting</h2></div>
       ${LIVE ? '<p class="muted" style="margin:0">Real posting isn\'t connected yet. For now this switch only controls which accounts employees can pick in a video request.</p>' : ""}
@@ -818,29 +854,39 @@
         <div class="field"><label for="j-product">Product</label><select id="j-product">${(b.products.length ? b.products.map((p) => p.name) : ["Main product"]).map((p) => `<option ${ref && ref.product === p ? "selected" : ""}>${esc(p)}</option>`).join("")}</select></div>
         <div class="field"><label for="j-style">Style</label><select id="j-style"><option>UGC talking to camera</option><option>Product demo</option><option>Before and after</option><option>Unboxing</option><option>Trend remix</option></select></div>
         <div class="field full"><label for="j-brief">What do you want?</label><textarea id="j-brief" required placeholder="e.g. A 30-second video showing the serum in a morning routine, aimed at women 18–34, ending with the November offer.">${ref ? esc(`Same idea as "${ref.title}" (${ref.hook.replace(/"/g, "")}) with a fresh hook and a different creator look.`) : esc(`A ${b.products[0] ? b.products[0].name : "product"} video for ${b.name}: show it in a real daily routine, keep the hook under 3 seconds, and end on "Shop now".`)}</textarea></div>
-        <div class="field"><label for="j-len">Length</label><select id="j-len"><option>15 sec</option><option selected>30 sec</option><option>45 sec</option><option>60 sec</option></select></div>
-        <div class="field"><label for="j-var">Variations</label><select id="j-var"><option>1</option><option selected>2</option><option>3</option></select></div>
+        <div class="field full"><div class="tri">
+          <div class="field"><label for="j-tier">Quality</label><select id="j-tier">${D.credits.tiers.map((t) => `<option value="${t.key}">${esc(t.label)} · ${fmtC(t.perSec)} credit${t.perSec === 1 ? "" : "s"}/sec</option>`).join("")}</select></div>
+          <div class="field"><label for="j-len">Length</label><select id="j-len"></select></div>
+          <div class="field"><label for="j-var">Variations</label><select id="j-var"><option selected>1</option><option>2</option><option>3</option></select></div>
+        </div><span class="hint" id="j-note"></span></div>
+        <div class="field full"><div class="callout" id="j-cost" role="status"></div></div>
         <div class="field full"><span class="label">Post to</span>
           <div class="checks cols">${accts.map((a, i) => `<label class="check"><input type="checkbox" name="acct" value="${i}" ${a.connected ? (i === 0 ? "checked" : "") : "disabled"}><div><b>${esc(a.platform)}</b><span>${esc(a.handle)}${a.connected ? "" : " · admin must connect"}</span></div></label>`).join("") || '<span class="muted">No accounts connected for this brand. Ask an admin.</span>'}</div>
           <span class="hint">Accounts are connected by an admin, so you never type social media passwords here.</span></div>
         <div class="modal-foot span"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn primary" type="submit">${I.rocket} Start agents</button></div>
       </form>`, true);
+    ["#j-tier", "#j-len", "#j-var"].forEach((sel) => $(sel).addEventListener("change", updateCost));
+    updateCost();
     $("#job-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
+      const t = tierOf($("#j-tier").value), seconds = +$("#j-len").value, variations = +$("#j-var").value, cost = costOf(t, seconds, variations);
+      if (costProblem(cost)) return updateCost();
       if (LIVE) {
-        const payload = { brand: b.id, product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: $("#j-len").value, variations: +$("#j-var").value, accounts: $$("[name=acct]:checked").map((i) => accts[+i.value].id) };
+        const payload = { brand: b.id, product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), tier: t.key, seconds, variations, accounts: $$("[name=acct]:checked").map((i) => accts[+i.value].id) };
         change(() => api("POST", "/api/jobs", payload), (out) => openJob(out.id));
         return;
       }
       const job = {
         id: "VR-" + (101 + state.jobs.length), brand: b.id, by: me().name, created: new Date().toISOString(),
-        product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: $("#j-len").value, variations: +$("#j-var").value,
+        product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: `${seconds} sec`, seconds, variations, tier: t.key, tierLabel: t.label, cost,
         accounts: $$("[name=acct]:checked").map((i) => accts[+i.value]), steps: AGENTS.map((a) => ({ key: a.key, status: "queued", progress: 0 })),
         log: [], status: "running", revision: 0, hue: (hueOf(b.name) % 80) + 240,
       };
       job.hook = makeHook(job);
-      logLine(job, "Supervisor", `Brief received from ${job.by}. ${job.variations} variation${job.variations > 1 ? "s" : ""}, ${job.length}, ${job.style.toLowerCase()}.`);
+      demoSpend(cost);
+      logLine(job, "Supervisor", `Brief received from ${job.by}. ${job.variations} variation${job.variations > 1 ? "s" : ""}, ${job.length}, ${t.label} quality, ${fmtC(cost)} credits.`);
       state.jobs.unshift(job);
+      renderSide();
       openJob(job.id);
       startTicker();
     });
@@ -889,35 +935,104 @@
       if (!active) { clearInterval(ticker); ticker = null; }
     }, 650);
   }
+  /* ----- credits: what a request costs and whether it fits the budget ----- */
+  const fmtC = (n) => (Math.round(n * 10) / 10).toLocaleString("en-US");
+  const dayLabel = (iso) => new Date(iso).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const tierOf = (key) => (D.credits ? D.credits.tiers.find((t) => t.key === key) : null);
+  const costOf = (t, seconds, variations) => Math.round(t.perSec * seconds * variations * 10) / 10;
+  // The same rules the server applies, so the form can say straight away why something won't go through.
+  function costProblem(cost) {
+    const c = D.credits; if (!c) return null;
+    if (cost > c.left) return `Only ${fmtC(c.left)} credits are left until they renew.`;
+    if (isAdmin()) return null;
+    if (cost > c.requestCap) return `One request can use ${fmtC(c.requestCap)} credits at most. Pick a lower quality, a shorter length or fewer variations.`;
+    if (cost > c.teamLeft) return "The team's credits for this month are used up. Ask an admin.";
+    if (cost > c.weekLeft) return `Only ${fmtC(c.weekLeft)} credits are left in this week's allowance. More unlock on ${dayLabel(c.weekResets)}.`;
+    return null;
+  }
+  function demoSpend(cost) {
+    const c = D.credits; if (!c) return;
+    c.balance -= cost; c.left -= cost; c.spentWeek += cost; c.spentCycle += cost;
+    c.teamLeft = Math.max(0, c.left - c.reserve); c.weekLeft = Math.max(0, Math.min(c.teamLeft, c.weekAllowance - c.spentWeek));
+  }
+  function creditsCard() {
+    const c = D.credits;
+    if (!c || !(isAdmin() || can("create"))) return "";
+    const used = c.weekAllowance > 0 ? Math.min(100, Math.round((c.spentWeek / (c.spentWeek + c.weekLeft || 1)) * 100)) : 100;
+    const renew = new Date(c.renewsOn).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `<div class="usage">
+      <div class="usage-top"><span>${c.connected ? "Higgsfield credits" : "Credit budget (practice)"}</span><span class="dot ${c.connected ? "" : "off"}" title="${c.connected ? "Connected to Higgsfield" : "Higgsfield isn't connected"}"></span></div>
+      <div class="usage-val num">${fmtC(c.left)}<small>left${c.connected ? "" : ` of ${fmtC(c.monthly)}`}</small></div>
+      <div class="track" title="This week's allowance"><i style="width:${used}%"></i></div>
+      <span class="sub">This week: <b style="color:var(--ink);font-weight:500">${fmtC(c.weekLeft)}</b> left to use${isAdmin() ? "" : " by the team"}</span>
+      <span class="sub">Renews ${renew} · ${c.daysLeft} day${c.daysLeft === 1 ? "" : "s"}</span>
+      ${isAdmin() ? '<a href="#connections">Manage budget</a>' : ""}
+    </div>`;
+  }
+  function updateCost() {
+    const t = tierOf($("#j-tier").value), len = $("#j-len");
+    if (len.dataset.tier !== t.key) { // each quality has its own lengths
+      const keep = +len.value;
+      len.innerHTML = t.lengths.map((s) => `<option value="${s}" ${s === (t.lengths.includes(keep) ? keep : t.lengths[t.lengths.length - 1]) ? "selected" : ""}>${s} sec</option>`).join("");
+      len.dataset.tier = t.key;
+    }
+    const cost = costOf(t, +len.value, +$("#j-var").value), problem = costProblem(cost), c = D.credits;
+    const overPace = !problem && isAdmin() && (cost > c.weekLeft || cost > c.requestCap);
+    $("#j-note").textContent = t.note;
+    $("#j-cost").className = "callout" + (problem || overPace ? " warn" : "");
+    $("#j-cost").innerHTML = `<b>${fmtC(cost)} credits</b> for this request${c.connected ? "" : " (practice run: nothing is spent)"}. ${problem ? esc(problem) : overPace ? "This is more than the team's weekly pace or limit; as admin you can still go ahead." : `${fmtC(c.weekLeft)} left in this week's allowance.`}`;
+    $("#job-form button[type=submit]").disabled = !!problem;
+  }
+
   function stepClass(s) { return s.status === "done" ? "done" : s.status === "working" ? "working" : ""; }
   function pipelineHtml(job) {
     const b = brandById(job.brand);
-    const statusPill = { running: '<span class="pill purple">Agents working</span>', review: '<span class="pill warn">Ready for review</span>', approval: '<span class="pill warn">Waiting for approval</span>', posted: '<span class="pill good">Published</span>' }[job.status];
+    const real = LIVE && !job.simulated;
+    const labels = { running: ["Agents working", "purple"], review: ["Ready for review", "warn"], approval: ["Waiting for approval", "warn"], posted: [real ? "Approved" : "Published", "good"], failed: ["Didn't finish", "bad"] };
+    const statusPill = `<span class="pill ${labels[job.status][1]}">${labels[job.status][0]}</span>`;
+    const stepPill = (s) => s.status === "done" ? ["good", "Done"] : s.status === "working" ? ["purple", "Working"] : s.status === "failed" ? ["bad", "Stopped"] : ["plain", "Queued"];
+    const clips = real && job.video ? job.video.files.map((_, n) => `/api/jobs/${job.id}/video/${n}?v=${job.revision}`) : [];
+    const cost = job.cost ? `${fmtC(job.cost)} credits` : "";
+    const approveBtn = `<button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} ${real ? "Approve" : "Approve and publish"}</button>`;
+    const noAccount = job.accounts.length ? "" : '<span class="hint">No posting account was selected for this request.</span>';
+    const reviseBtn = `<button class="btn" data-job-act="revise">${real ? `Make a new version (${cost})` : "Request changes"}</button>`;
     return `
-      ${job.simulated ? '<div class="callout warn">Simulation: Higgsfield isn\'t connected yet, so no video is created and nothing is posted.</div>' : ""}
-      <div class="agents">${job.steps.map((s, i) => { const a = AGENTS[i]; return `
+      ${LIVE && job.simulated ? '<div class="callout warn">Practice run: Higgsfield isn\'t connected yet, so no video is created, no credits are spent and nothing is posted.</div>' : ""}
+      <div class="agents">${job.steps.map((s, i) => { const a = AGENTS[i]; const [tone, word] = stepPill(s); return `
         <div class="agent ${stepClass(s)}"><span class="agent-ic">${a.icon}</span>
           <div class="agent-main">
-            <div class="agent-top"><b>${a.name}</b><span class="pill ${s.status === "done" ? "good" : s.status === "working" ? "purple" : "plain"}">${s.status === "done" ? "Done" : s.status === "working" ? "Working" : "Queued"}</span></div>
-            <span class="agent-out">${s.status === "done" ? agentOutput(job, a.key) : a.role}</span>
+            <div class="agent-top"><b>${a.name}</b><span class="pill ${tone}">${word}</span></div>
+            <span class="agent-out">${s.status === "done" ? (job.outputs && job.outputs[a.key] ? esc(job.outputs[a.key]) : agentOutput(job, a.key)) : a.role}</span>
             ${s.status === "working" ? `<div class="bar"><i style="width:${s.progress.toFixed(0)}%"></i></div>` : ""}
           </div></div>`; }).join("")}</div>
       <div style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow">Supervisor log</span>
         <div class="log" id="job-log">${job.log.map((l) => `<div>${l.t} <span>${esc(l.who)}</span> ${esc(l.text)}</div>`).join("")}</div></div>
-      ${job.status !== "running" ? `
-      <div class="result">
-        <div class="preview">${thumb({ hue: job.hue, status: job.status === "posted" ? "live" : "review", duration: parseInt(job.length, 10), hook: job.hook })}</div>
+      ${job.status === "failed" ? `
+      <div class="result" style="grid-template-columns:minmax(0,1fr);border-color:rgba(248,113,113,.4);background:var(--bad-soft)">
         <div class="result-main">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(job.product)} · ${esc(job.length)}</b>${statusPill}</div>
-          <div class="script">${esc(`Hook: ${job.hook}\nBeat 1: Show the everyday problem in a quick close-up.\nBeat 2: ${job.product} in use, real hands, natural light.\nBeat 3: The result, then "Shop now" with the brand end card.`)}</div>
-          ${job.status === "posted" ? `<span class="muted" style="font-size:13px">Published to ${job.accounts.map((a) => esc(a.platform + " " + a.handle)).join(", ") || "no accounts"}. Results appear in News once Euka picks it up.</span>`
-            : job.status === "approval" ? `<span class="muted" style="font-size:13px">Sent to an approver. They'll see it in this brand's video requests.</span>${can("approve") ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} Approve and publish</button></div>${job.accounts.length ? "" : '<span class="hint">No posting account was selected for this request.</span>'}` : ""}`
-            : `<div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${can("approve") ? `<button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} Approve and publish</button>` : `<button class="btn primary" data-job-act="send">${I.send} Send for approval</button>`}
-                <button class="btn" data-job-act="revise">Request changes</button></div>
-              ${job.accounts.length ? "" : '<span class="hint">No posting account was selected for this request.</span>'}`}
+          <span>${esc(job.error || "This request didn't finish.")}</span>
+          ${can("create") || can("approve") ? `<div><button class="btn" data-job-act="revise">Try again${real ? ` (${cost})` : ""}</button></div>` : ""}
+        </div></div>` : job.status !== "running" ? `
+      <div class="result" ${clips.length ? 'style="grid-template-columns:minmax(0,1fr)"' : ""}>
+        ${clips.length
+          ? `<div class="clips">${clips.map((src, n) => `<video controls playsinline preload="metadata" src="${src}" aria-label="Clip ${n + 1} of ${clips.length}"></video>`).join("")}</div>`
+          : `<div class="preview">${thumb({ hue: job.hue, status: job.status === "posted" ? "live" : "review", duration: parseInt(job.length, 10), hook: job.hook })}</div>`}
+        <div class="result-main">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(job.product)} · ${esc(job.length)}</b>${statusPill}</div>
+          ${real
+            ? `<span class="muted" style="font-size:13px">${clips.length} clip${clips.length === 1 ? "" : "s"} made by Higgsfield from your brief. Captions, music and automatic posting aren't connected yet.</span>`
+            : `<div class="script">${esc(`Hook: ${job.hook}\nBeat 1: Show the everyday problem in a quick close-up.\nBeat 2: ${job.product} in use, real hands, natural light.\nBeat 3: The result, then "Shop now" with the brand end card.`)}</div>`}
+          ${job.status === "posted"
+            ? (real
+              ? `<span style="font-size:13px">Approved. Download the video and post it to ${job.accounts.map((a) => esc(a.platform + " " + a.handle)).join(", ") || "the brand's account"}.</span>
+                 <div style="display:flex;gap:8px;flex-wrap:wrap">${clips.map((src, n) => `<a class="btn" href="${src}" download="${job.id}-${n + 1}.mp4">${I.download} Download${clips.length > 1 ? ` clip ${n + 1}` : " video"}</a>`).join("")}</div>`
+              : `<span class="muted" style="font-size:13px">Published to ${job.accounts.map((a) => esc(a.platform + " " + a.handle)).join(", ") || "no accounts"}. Results appear in News once Euka picks it up.</span>`)
+            : job.status === "approval"
+              ? `<span class="muted" style="font-size:13px">Sent to an approver. They'll see it in this brand's video requests.</span>${can("approve") ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${approveBtn}</div>${noAccount}` : ""}`
+              : `<div style="display:flex;gap:8px;flex-wrap:wrap">${can("approve") ? approveBtn : `<button class="btn primary" data-job-act="send">${I.send} Send for approval</button>`}${reviseBtn}</div>${noAccount}`}
         </div></div>` : ""}
-      <span class="hint">${esc(b.name)} · ${job.id} · requested by ${esc(job.by)}</span>`;
+      <span class="hint">${esc(b.name)} · ${job.id} · requested by ${esc(job.by)}${cost ? ` · ${cost}` : ""}</span>`;
   }
   function openJob(id) {
     const job = state.jobs.find((j) => j.id === id); if (!job) return;
@@ -928,7 +1043,7 @@
         <div class="brief-summary card" style="background:var(--panel-2)">
           <span class="eyebrow">Your brief</span>
           <p style="margin:0">${esc(job.brief)}</p>
-          <dl class="specs"><dt>Product</dt><dd class="text">${esc(job.product)}</dd><dt>Style</dt><dd class="text">${esc(job.style)}</dd><dt>Length</dt><dd>${esc(job.length)}</dd><dt>Variations</dt><dd>${job.variations}</dd><dt>Post to</dt><dd class="text">${job.accounts.map((a) => esc(a.platform)).join(", ") || "Not selected"}</dd></dl>
+          <dl class="specs"><dt>Product</dt><dd class="text">${esc(job.product)}</dd><dt>Style</dt><dd class="text">${esc(job.style)}</dd>${job.tierLabel ? `<dt>Quality</dt><dd class="text">${esc(job.tierLabel)}</dd>` : ""}<dt>Length</dt><dd>${esc(job.length)}</dd><dt>Variations</dt><dd>${job.variations}</dd>${job.cost ? `<dt>Cost</dt><dd>${fmtC(job.cost)} credits${LIVE && job.simulated ? " (practice)" : ""}</dd>` : ""}<dt>Post to</dt><dd class="text">${job.accounts.map((a) => esc(a.platform)).join(", ") || "Not selected"}</dd></dl>
         </div>
         <div id="pipeline" style="display:flex;flex-direction:column;gap:14px">${pipelineHtml(job)}</div>
       </div>`, true);
@@ -937,23 +1052,26 @@
   }
   function scrollLog() { const l = $("#job-log"); if (l) l.scrollTop = l.scrollHeight; }
   function refreshJobs() {
-    if (state.openJob) { const job = state.jobs.find((j) => j.id === state.openJob); const p = $("#pipeline"); if (job && p) { p.innerHTML = pipelineHtml(job); scrollLog(); } }
+    if (state.openJob) {
+      const job = state.jobs.find((j) => j.id === state.openJob), p = $("#pipeline"), sig = JSON.stringify(job);
+      if (job && p && p.dataset.sig !== sig) { p.innerHTML = pipelineHtml(job); p.dataset.sig = sig; scrollLog(); }
+    }
     const r = $("#requests"); if (r && state.route.startsWith("brand-")) r.innerHTML = requestsList(state.route.slice(6));
   }
   function requestsList(brandId) {
     const jobs = state.jobs.filter((j) => j.brand === brandId);
     if (!jobs.length) return `<span class="muted">No requests yet.${can("create") ? " Use “Post more” to start one." : ""}</span>`;
-    const label = { running: ["Agents working", "purple"], review: ["Ready for review", "warn"], approval: ["Waiting for approval", "warn"], posted: ["Published", "good"] };
+    const label = { running: ["Agents working", "purple"], review: ["Ready for review", "warn"], approval: ["Waiting for approval", "warn"], posted: ["Published", "good"], failed: ["Didn't finish", "bad"] };
     return jobs.map((j) => `<button class="req" data-job="${j.id}">
       <span><b style="font-weight:600">${esc(j.product)}</b> <span class="muted">· ${esc(j.style)} · ${esc(j.length)}</span></span>
-      <span class="pill ${label[j.status][1]}">${label[j.status][0]}</span>
+      <span class="pill ${label[j.status][1]}">${j.status === "posted" && LIVE && !j.simulated ? "Approved" : label[j.status][0]}</span>
       <span class="req-steps">${j.steps.map((s) => `<i><span style="width:${s.progress}%"></span></i>`).join("")}</span>
     </button>`).join("");
   }
   function jobAction(act) {
     const job = state.jobs.find((j) => j.id === state.openJob); if (!job) return;
     if (LIVE) {
-      const id = job.id, said = { approve: "Marked as published (simulation).", send: "Sent for approval." }[act];
+      const id = job.id, said = { approve: job.simulated ? "Marked as published (practice run)." : "Approved.", send: "Sent for approval." }[act];
       change(() => api("POST", `/api/jobs/${id}/action`, { action: act }), () => { openJob(id); if (said) toast(said); });
       return;
     }
@@ -1088,7 +1206,12 @@
   function pollJobs() {
     if (poller || !state.jobs.some((j) => j.status === "running")) return;
     poller = setInterval(async () => {
-      try { state.jobs = (await api("GET", "/api/jobs")).jobs; if (D) D.jobs = state.jobs; refreshJobs(); } catch (_) {}
+      try {
+        const out = await api("GET", "/api/jobs");
+        state.jobs = out.jobs;
+        if (D) { D.jobs = state.jobs; if (out.credits) { D.credits = out.credits; renderSide(); } }
+        refreshJobs();
+      } catch (_) {}
       if (!state.jobs.some((j) => j.status === "running")) { clearInterval(poller); poller = null; }
     }, 800);
   }
@@ -1195,6 +1318,19 @@
       <div class="modal-foot"><button class="btn ghost" data-close>Keep it</button><button class="btn danger" id="confirm-clear">Remove sample data</button></div>`);
     $("#confirm-clear").addEventListener("click", () => { closeOverlays(); change(() => api("POST", "/api/sample/clear"), () => { go("brands"); toast("Sample data removed."); }); });
   }
+  function confirmDisconnect() {
+    openModal(`
+      <div class="modal-head"><div><h2>Disconnect Higgsfield?</h2><p>Tracker stops creating real videos and forgets its access to your Higgsfield account. Videos already made stay here. You can connect again at any time.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="modal-foot"><button class="btn ghost" data-close>Keep connected</button><button class="btn danger" id="confirm-disconnect">Disconnect</button></div>`);
+    $("#confirm-disconnect").addEventListener("click", () => { closeOverlays(); change(() => api("POST", "/api/higgsfield/disconnect"), () => toast("Higgsfield disconnected.")); });
+  }
+  // After signing in on Higgsfield's page the browser lands back here with the result.
+  function higgsfieldResult() {
+    const r = new URLSearchParams(location.search).get("hf");
+    if (!r) return;
+    history.replaceState(null, "", "/" + location.hash);
+    toast({ ok: "Higgsfield is connected.", cancelled: "Higgsfield sign-in was cancelled.", signin: "Sign in to Tracker as the admin first, then connect Higgsfield again.", failed: "Higgsfield couldn't be connected. Try again." }[r] || "");
+  }
   async function boot() {
     const m = location.hash.match(/^#link-([\w-]+)$/);
     if (m) {
@@ -1202,7 +1338,7 @@
       catch (e) { gate("badlink", { message: e.message }); }
       return;
     }
-    if (await sync()) render();
+    if (await sync()) { render(); higgsfieldResult(); }
   }
 
   /* ================= render + events ================= */
@@ -1304,6 +1440,11 @@
     else if (act === "export") exportReport();
     else if (act === "help") { setNavOpen(false); ask("How do I use Tracker?"); }
     else if (act === "table-search") { state.tableSearch = !state.tableSearch; if (!state.tableSearch) state.tableQuery = ""; refreshTable(); }
+    else if (act === "hf-connect") {
+      if (state.previewAs) toast("Preview is read-only. Exit the preview to make changes.");
+      else api("POST", "/api/higgsfield/connect").then((out) => { location.href = out.url; }).catch((e) => toast(e.message));
+    }
+    else if (act === "hf-disconnect") confirmDisconnect();
     else if (act === "account") accountMenu();
     else if (act === "exit-preview") exitPreview();
     else if (act === "clear-sample") confirmClearSample();
@@ -1313,6 +1454,13 @@
   });
   $("#scrim").addEventListener("click", closeOverlays);
   $("#nav-scrim").addEventListener("click", () => setNavOpen(false));
+  document.addEventListener("submit", (e) => {
+    if (e.target.id !== "budget-form") return;
+    e.preventDefault();
+    const body = { monthly: +$("#bd-monthly").value, renewDay: +$("#bd-day").value, reservePct: +$("#bd-reserve").value, requestCap: +$("#bd-cap").value };
+    if (LIVE) change(() => api("POST", "/api/budget", body), () => toast("Budget saved."));
+    else toast("Budget saved (demo).");
+  });
   document.addEventListener("submit", (e) => { if (e.target.id === "as-form") { e.preventDefault(); const i = $("#as-input"); const q = i.value; i.value = ""; ask(q); } });
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); const s = $("#search"); if (s) s.focus(); return; }

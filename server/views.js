@@ -46,7 +46,7 @@ function jobsFor(db, u) {
 
 // `viewer` is whose eyes we look through; `actor` is who is really signed in.
 // They differ only when an admin previews what an employee sees.
-function stateFor(db, viewer, actor) {
+function stateFor(db, viewer, actor, extras = {}) {
   const brands = db.all("SELECT data FROM brands ORDER BY position, rowid").map((r) => JSON.parse(r.data)).filter((b) => brandOk(viewer, b.id));
   const ids = new Set(brands.map((b) => b.id));
   const accounts = {};
@@ -68,7 +68,7 @@ function stateFor(db, viewer, actor) {
     product: "Tracker",
     sample: !!db.setting("sample", false),
     lastSync: db.setting("lastSync", null),
-    credits: null, // filled in once Higgsfield is connected
+    credits: extras.credits || null, // the credit budget, for people who can request videos
     connections: db.setting("connections", { slack: false, euka: false, higgsfield: false, claude: false }),
     brands: brands.map((b) => brandFor(viewer, b)),
     accounts,

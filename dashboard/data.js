@@ -41,7 +41,17 @@
     agency: "Your Agency",
     product: "Tracker",
     lastSync: { euka: "2026-10-31T09:42:00", slack: "2026-10-31T09:45:00" },
-    credits: { label: "Higgsfield credits", used: 8245, total: 10000 },
+    // The credit budget as Tracker would show it on 12 Nov with 373 credits left of 600.
+    credits: {
+      connected: true, plan: "pro", balance: 373.3, left: 373.3, monthly: 600, reserve: 60, reservePct: 10, requestCap: 75, renewDay: 5,
+      renewsOn: "2026-12-05T00:00:00", daysLeft: 23, weekResets: "2026-11-19T00:00:00", spentCycle: 0, spentWeek: 0, teamLeft: 313.3, weekAllowance: 95.3, weekLeft: 95.3,
+      tiers: [
+        { key: "draft", label: "Draft", perSec: 1, lengths: [5, 10, 15], note: "Cheapest. Good for testing an idea before spending more." },
+        { key: "standard", label: "Standard", perSec: 2.5, lengths: [5, 10, 15], note: "Better motion and detail. A sensible default for posts." },
+        { key: "ad", label: "Ad quality", perSec: 5, lengths: [15], note: "Higgsfield's ad model, made for TikTok and Reels." },
+      ],
+      byBrand: [],
+    },
 
     brands: [
       {

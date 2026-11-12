@@ -102,7 +102,7 @@ test("the employee can't use admin actions or preview others", async () => {
 test("video requests follow brand access and publish rights", async () => {
   assert.equal((await call("sara", "POST", "/api/jobs", { brand: "ridgeline-active", brief: "x" })).status, 404, "no access to that brand");
   const accounts = (await call("sara", "GET", "/api/session")).json.state.accounts["lumora-skin"];
-  const made = await call("sara", "POST", "/api/jobs", { brand: "lumora-skin", brief: "Morning routine", product: "Serum", length: "30 sec", variations: 2, accounts: [accounts[0].id] });
+  const made = await call("sara", "POST", "/api/jobs", { brand: "lumora-skin", brief: "Morning routine", product: "Serum", tier: "draft", seconds: 15, variations: 2, accounts: [accounts[0].id] });
   assert.equal(made.status, 200);
   const id = made.json.id;
   assert.equal((await call("sara", "POST", `/api/jobs/${id}/action`, { action: "send" })).status, 409, "not ready yet");

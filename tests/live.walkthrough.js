@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { chromium } = require("playwright");
 const { createApp } = require("../server/server");
+const { createMock } = require("./mock-higgsfield");
 
 const shots = process.argv[2]; // optional folder for screenshots
 const issues = [];
@@ -14,7 +15,9 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
 
 (async () => {
   const dbFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "tracker-test-")), "tracker.db");
-  let app = createApp({ dbFile, tickMs: 40 });
+  const mock = createMock({ credits: 600 }); // a stand-in for Higgsfield
+  process.env.HIGGSFIELD_MCP_URL = (await mock.listen()) + "/mcp";
+  let app = createApp({ dbFile, tickMs: 40, pollMs: 60 });
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   const port = app.server.address().port, U = "http://127.0.0.1:" + port;
 
@@ -79,9 +82,16 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
 
   // ----- employee requests a video; admin approves -----
   await s.goto(U + "/#brand-lumora-skin"); await s.waitForSelector('[data-action="post-more"]');
-  await s.click('[data-action="post-more"]'); await s.click("#job-form button[type=submit]");
+  await s.click('[data-action="post-more"]');
+  check((await s.textContent("#j-cost")).includes("15 credits"), "the form should show what the request costs");
+  await s.selectOption("#j-tier", "standard"); await s.selectOption("#j-var", "3");
+  check((await s.textContent("#j-cost")).includes("at most") && (await s.isDisabled("#job-form button[type=submit]")), "a request over the limit should be blocked with a reason");
+  await snap(s, "live-4b-over-limit");
+  await s.selectOption("#j-tier", "draft"); await s.selectOption("#j-var", "1");
+  await s.click("#job-form button[type=submit]");
   await s.waitForSelector('[data-job-act="send"]', { timeout: 30000 });
-  check(await s.isVisible("text=Simulation: Higgsfield"), "the run must be labelled as a simulation");
+  check(await s.isVisible("text=Practice run: Higgsfield"), "the run must be labelled as a practice run");
+  check((await s.textContent(".usage")).includes("practice"), "the credits card should say it is a practice budget");
   check(!(await s.$('[data-job-act="approve"]')), "Sara can't approve");
   await snap(s, "live-5-pipeline");
   await s.click('[data-job-act="send"]'); await s.waitForSelector("text=Waiting for approval");
@@ -90,6 +100,25 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   await a.goto(U + "/#brand-lumora-skin"); await a.waitForSelector(".req");
   await a.click(".req"); await a.waitForSelector('[data-job-act="approve"]');
   await a.click('[data-job-act="approve"]'); await a.waitForSelector(".result .pill.good");
+  await a.keyboard.press("Escape");
+
+  // ----- admin connects Higgsfield, then a request makes a real (stand-in) video -----
+  await a.goto(U + "/#connections"); await a.waitForSelector('[data-action="hf-connect"]');
+  await snap(a, "live-7-connections-before");
+  await a.click('[data-action="hf-connect"]');
+  await a.waitForSelector('[data-action="hf-disconnect"]', { timeout: 15000 });
+  check(!a.url().includes("hf="), "the result marker should be cleared from the address bar");
+  check((await a.textContent(".usage")).includes("Higgsfield credits") && (await a.textContent(".usage")).includes("600"), "the credits card should show the real balance");
+  check(await a.isVisible("#budget"), "the budget card should be on Connections");
+  await snap(a, "live-8-connections-after");
+  await a.goto(U + "/#brand-pawsome-pantry"); await a.waitForSelector('[data-action="post-more"]');
+  await a.click('[data-action="post-more"]'); await a.click("#job-form button[type=submit]");
+  await a.waitForSelector(".clips video", { timeout: 30000 });
+  check(!(await a.isVisible("text=Practice run")), "a real run must not be labelled practice");
+  check((await a.textContent(".usage")).includes("585"), "15 credits should have left the real balance");
+  await snap(a, "live-9-real-video");
+  await a.click('[data-job-act="approve"]'); await a.waitForSelector("a[download]");
+  check(await a.isVisible("text=Approved. Download the video"), "an approved real video should offer a download");
   await a.keyboard.press("Escape");
 
   // ----- admin previews Sara's view, read-only -----
@@ -101,7 +130,7 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
 
   // ----- everything survives a restart -----
   await new Promise((r) => app.server.close(r));
-  app = createApp({ dbFile, tickMs: 40 });
+  app = createApp({ dbFile, tickMs: 40, pollMs: 60 });
   await new Promise((r) => app.server.listen(port, "127.0.0.1", r));
   await a.goto(U + "/#employees"); await a.waitForSelector("table");
   check(await a.isVisible("text=Sara Malik"), "employees must survive a restart");
@@ -143,5 +172,6 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   console.log(issues.length ? `\n${issues.length} issue(s) found` : "\nNo issues found");
   await browser.close();
   await new Promise((r) => app.server.close(r));
+  await mock.close();
   process.exit(issues.length ? 1 : 0);
 })().catch((e) => { console.error("TEST CRASHED:", e.message.split("\n")[0], (e.stack.match(/live\.walkthrough\.js:\d+/) || [""])[0]); process.exit(2); });

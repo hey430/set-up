@@ -24,6 +24,8 @@ const { open, seedSample, clearSample } = require("./db");
 const auth = require("./auth");
 const views = require("./views");
 const pipeline = require("./pipeline");
+const budget = require("./budget");
+const higgsfield = require("./higgsfield");
 
 const ROOT = path.resolve(__dirname, "..");
 const STATIC = path.join(ROOT, "dashboard");
@@ -37,9 +39,12 @@ const fail = (status, message) => { throw new HttpError(status, message); };
 const text = (v, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = path.join(STATIC, "data.js"), tickMs = 650, office = false } = {}) {
+function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = path.join(STATIC, "data.js"), tickMs = 650, pollMs = 8000, office = false } = {}) {
   const db = open(dbFile);
-  const ticker = pipeline.start(db, tickMs);
+  const videoDir = dbFile === ":memory:" ? path.join(os.tmpdir(), "tracker-videos-" + process.pid) : path.join(path.dirname(dbFile), "videos");
+  const hf = higgsfield.create(db);
+  const pipe = pipeline.create({ db, hf, budget, videoDir, pollMs });
+  const ticker = pipe.start(tickMs);
 
   const hasAdmin = () => !!db.get("SELECT 1 AS x FROM users WHERE role = 'admin' AND status != 'removed'");
   const brandExists = (id) => !!db.get("SELECT 1 AS x FROM brands WHERE id = ?", id);
@@ -69,11 +74,12 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     return { actor, viewer };
   }
 
-  route("GET", /^\/api\/session$/, ({ req, url }) => {
+  route("GET", /^\/api\/session$/, async ({ req, url }) => {
     if (!hasAdmin()) return { needsSetup: true };
     const { actor, viewer } = context(req, url);
     if (!actor) return { user: null, agency: db.setting("agency", "Your Agency") };
-    return { state: views.stateFor(db, viewer, actor) };
+    await hf.refreshBalance(); // at most once a minute
+    return { state: views.stateFor(db, viewer, actor, { credits: creditsFor(viewer) }) };
   }, { open: true });
 
   route("POST", /^\/api\/setup$/, ({ body, res }) => {
@@ -216,30 +222,95 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
 
   route("POST", /^\/api\/sample\/clear$/, () => { clearSample(db); return { ok: true }; }, { admin: true });
 
-  // ----- video requests -----
-  route("GET", /^\/api\/jobs$/, ({ viewer }) => ({ jobs: views.jobsFor(db, viewer) }), { preview: true });
+  // ----- credits, budget and Higgsfield -----
+  // Anything that talks to Higgsfield can fail for reasons outside Tracker; say why.
+  const upstream = async (fn) => { try { return await fn(); } catch (e) { if (e instanceof HttpError) throw e; fail(502, e.message || "Higgsfield didn't answer."); } };
 
-  route("POST", /^\/api\/jobs$/, ({ actor, body }) => {
+  function budgetNow() {
+    const connected = hf.connected();
+    const bal = connected ? db.setting("higgsfield_balance", null) : null;
+    return { connected, plan: bal ? bal.plan : "", sum: budget.summary(db, { connected, balance: bal ? bal.credits : null }) };
+  }
+  function creditsFor(viewer) {
+    if (!views.isAdmin(viewer) && !views.can(viewer, "create")) return null;
+    const { connected, plan, sum } = budgetNow();
+    const out = { ...sum, plan, tiers: budget.TIERS.map(({ key, label, perSec, lengths, note }) => ({ key, label, perSec, lengths, note })) };
+    if (views.isAdmin(viewer)) {
+      const names = Object.fromEntries(db.all("SELECT id, data FROM brands").map((r) => [r.id, JSON.parse(r.data).name]));
+      out.byBrand = budget.byBrand(db, { connected }).map((r) => ({ ...r, name: names[r.brand] || "Removed brand" }));
+    }
+    return out;
+  }
+
+  route("POST", /^\/api\/budget$/, ({ body }) => {
+    const n = (v, lo, hi, what) => { const x = Number(v); if (!Number.isFinite(x) || x < lo || x > hi) fail(400, `${what} must be between ${lo} and ${hi}.`); return x; };
+    db.setSetting("budget", {
+      monthly: Math.round(n(body.monthly, 1, 1_000_000, "Monthly credits")),
+      reservePct: Math.round(n(body.reservePct, 0, 50, "The admin reserve")),
+      requestCap: n(body.requestCap, 1, 1_000_000, "The limit per request"),
+      renewDay: Math.round(n(body.renewDay, 1, 31, "The renewal day")),
+      setByAdmin: true,
+    });
+    return { ok: true };
+  }, { admin: true });
+
+  route("POST", /^\/api\/higgsfield\/connect$/, ({ req }) => {
+    const host = req.headers.host || "";
+    // Higgsfield only sends the sign-in back to "localhost", which means the computer running Tracker.
+    if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) fail(400, "Do this on the computer that runs Tracker: open Tracker there at http://localhost and press Connect Higgsfield.");
+    return upstream(async () => ({ url: await hf.startConnect(`http://${host}/oauth/higgsfield/callback`) }));
+  }, { admin: true });
+
+  route("POST", /^\/api\/higgsfield\/disconnect$/, () => { hf.disconnect(); return { ok: true }; }, { admin: true });
+
+  // ----- video requests -----
+  route("GET", /^\/api\/jobs$/, ({ viewer }) => ({ jobs: views.jobsFor(db, viewer), credits: creditsFor(viewer) }), { preview: true });
+
+  // Works out the price and checks it against the budget. Throws with a plain reason if it doesn't fit.
+  async function priceAndCheck(actor, t, seconds, variations) {
+    const real = hf.connected();
+    let cost = budget.estimate(t, seconds, variations);
+    if (real) {
+      const one = await upstream(() => hf.quote({ model: t.model, prompt: "price check", aspect_ratio: "9:16", duration: seconds, ...t.params }));
+      cost = Math.round(one * variations * 10) / 10;
+      await hf.refreshBalance(true);
+    }
+    const verdict = budget.check(budgetNow().sum, { cost, isAdmin: views.isAdmin(actor) });
+    if (!verdict.ok) fail(402, verdict.reason);
+    return { cost, real };
+  }
+  const addCharge = (job, actor, cost, real) =>
+    Number(db.run("INSERT INTO charges (job_id, brand_id, user_id, user_name, tier, credits, status, simulated, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", job.id, job.brand, actor.id, actor.name, job.tier, cost, real ? "reserved" : "spent", real ? 0 : 1, Date.now()).lastInsertRowid);
+
+  route("POST", /^\/api\/jobs$/, async ({ actor, body }) => {
     const brandId = text(body.brand, 120);
     const row = db.get("SELECT data FROM brands WHERE id = ?", brandId);
     if (!row || !views.brandOk(actor, brandId)) fail(404, "That brand isn't available to you.");
     if (!views.can(actor, "create")) fail(403, "You don't have permission to request videos.");
     const brief = text(body.brief, 2000);
     if (!brief) fail(400, "Describe the video you want.");
+    const t = budget.tier(body.tier);
+    if (!t) fail(400, "Choose a quality for the video.");
+    const seconds = Number(body.seconds);
+    if (!t.lengths.includes(seconds)) fail(400, `${t.label} videos can be ${t.lengths.join(", ")} seconds long.`);
+    const variations = Math.min(3, Math.max(1, Math.round(Number(body.variations) || 1)));
+    const { cost, real } = await priceAndCheck(actor, t, seconds, variations);
+
     const brand = JSON.parse(row.data);
     const wanted = Array.isArray(body.accounts) ? body.accounts.map(Number) : [];
     const accounts = db.all("SELECT * FROM accounts WHERE brand_id = ? AND connected = 1", brandId).filter((a) => wanted.includes(a.id)).map((a) => ({ platform: a.platform, handle: a.handle }));
     let hue = 0; for (const c of brand.name) hue = (hue * 31 + c.charCodeAt(0)) % 360;
     const n = db.get("SELECT COUNT(*) AS n FROM jobs").n;
-    const job = pipeline.newJob({
-      id: "VR-" + (101 + n), brand: brandId, by: actor.name, product: text(body.product, 120) || "Main product", style: text(body.style, 60) || "UGC talking to camera",
-      brief, length: /^(15|30|45|60) sec$/.test(body.length) ? body.length : "30 sec", variations: Math.min(3, Math.max(1, Number(body.variations) || 1)), accounts, hue: (hue % 80) + 240,
+    const job = pipe.newJob({
+      id: "VR-" + (101 + n), brand: brandId, brandName: brand.name, by: actor.name, product: text(body.product, 120) || "Main product", style: text(body.style, 60) || "UGC talking to camera",
+      brief, tier: t.key, tierLabel: t.label, seconds, variations, accounts, cost, simulated: !real, hue: (hue % 80) + 240,
     });
+    job.chargeId = addCharge(job, actor, cost, real);
     db.run("INSERT INTO jobs (id, brand_id, status, created_at, data) VALUES (?, ?, ?, ?, ?)", job.id, brandId, job.status, Date.now(), JSON.stringify(job));
-    return { id: job.id };
+    return { id: job.id, cost };
   });
 
-  route("POST", /^\/api\/jobs\/([\w-]+)\/action$/, ({ actor, params, body }) => {
+  route("POST", /^\/api\/jobs\/([\w-]+)\/action$/, async ({ actor, params, body }) => {
     const row = db.get("SELECT data FROM jobs WHERE id = ?", params[0]);
     const job = row && JSON.parse(row.data);
     if (!job || !views.brandOk(actor, job.brand)) fail(404, "That video request isn't available to you.");
@@ -250,12 +321,31 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
       if (!job.accounts.length) fail(400, "No posting account was selected for this request.");
     } else if (action === "send" || action === "revise") {
       if (!views.can(actor, "create") && !views.can(actor, "approve")) fail(403, "You don't have permission to change video requests.");
-      if (!["review", "approval"].includes(job.status)) fail(409, "This request is still being worked on.");
+      const ready = action === "revise" ? ["review", "approval", "failed"] : ["review", "approval"];
+      if (!ready.includes(job.status)) fail(409, "This request is still being worked on.");
+      if (action === "revise" && !job.simulated) {
+        // A new version makes new clips, so it is paid for and checked like a new request.
+        if (!hf.connected()) fail(409, "Higgsfield isn't connected, so a new version can't be made.");
+        const { cost } = await priceAndCheck(actor, budget.tier(job.tier), job.seconds, job.variations);
+        job.cost = cost;
+        job.chargeId = addCharge(job, actor, cost, true);
+      }
     } else fail(400, "Unknown action.");
-    pipeline.act(job, action, actor);
+    pipe.act(job, action, actor);
     db.run("UPDATE jobs SET status = ?, data = ? WHERE id = ?", job.status, JSON.stringify(job), job.id);
     return { ok: true };
   });
+
+  // Plays or downloads a finished clip. Same brand rules as everything else.
+  route("GET", /^\/api\/jobs\/([\w-]+)\/video\/(\d)$/, ({ viewer, params }) => {
+    const row = db.get("SELECT data FROM jobs WHERE id = ?", params[0]);
+    const job = row && JSON.parse(row.data);
+    if (!job || !views.brandOk(viewer, job.brand) || !job.video) fail(404, "That video isn't available.");
+    const n = Number(params[1]), file = job.video.files[n] && path.join(videoDir, path.basename(job.video.files[n]));
+    if (file && fs.existsSync(file)) return { __file: file, type: "video/mp4", name: `${job.id}-${n + 1}.mp4` };
+    if (job.video.urls[n]) return { __redirect: job.video.urls[n] };
+    fail(404, "That video isn't available.");
+  }, { preview: true });
 
   // ---------- request handling ----------
   function readBody(req) {
@@ -292,7 +382,13 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
       if (r.admin && !views.isAdmin(actor)) fail(403, "Only an admin can do that.");
       if (viewer.id !== actor.id && !r.preview) fail(403, "Preview is read-only.");
     }
-    send(res, 200, r.handler({ req, res, url, body, actor, viewer, params: m.slice(1) }) || { ok: true });
+    const out = await r.handler({ req, res, url, body, actor, viewer, params: m.slice(1) });
+    if (out && out.__redirect) { res.writeHead(302, { Location: out.__redirect, "Cache-Control": "no-store" }); return res.end(); }
+    if (out && out.__file) {
+      res.writeHead(200, { "Content-Type": out.type, "Content-Length": fs.statSync(out.__file).size, "Content-Disposition": `inline; filename="${out.name}"`, "Cache-Control": "private, max-age=3600" });
+      return fs.createReadStream(out.__file).pipe(res);
+    }
+    send(res, 200, out || { ok: true });
   }
 
   function staticFile(req, res, url) {
@@ -309,6 +405,16 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     fs.createReadStream(file).pipe(res);
   }
 
+  // Higgsfield sends the admin's browser back here after they sign in on Higgsfield's page.
+  async function higgsfieldCallback(req, res, url) {
+    const back = (result) => { res.writeHead(302, { Location: `/?hf=${result}#connections`, "Cache-Control": "no-store" }); res.end(); };
+    const actor = auth.currentUser(db, req);
+    if (!actor || !views.isAdmin(actor)) return back("signin");
+    if (url.searchParams.get("error") || !url.searchParams.get("code")) return back("cancelled");
+    try { await hf.finishConnect({ code: url.searchParams.get("code"), state: url.searchParams.get("state") }); back("ok"); }
+    catch (e) { console.error("Higgsfield sign-in failed:", e.message); back("failed"); }
+  }
+
   const server = http.createServer(async (req, res) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
@@ -316,6 +422,7 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     try {
       const url = new URL(req.url, "http://localhost");
       if (url.pathname.startsWith("/api/")) await api(req, res, url);
+      else if (url.pathname === "/oauth/higgsfield/callback") await higgsfieldCallback(req, res, url);
       else staticFile(req, res, url);
     } catch (e) {
       if (!(e instanceof HttpError)) console.error(e);
@@ -324,7 +431,7 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     }
   });
   server.on("close", () => { clearInterval(ticker); try { db.close(); } catch {} });
-  return { server, db };
+  return { server, db, hf, pipe };
 }
 
 // ---------- command line ----------
