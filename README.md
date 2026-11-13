@@ -13,7 +13,8 @@ The agency's private dashboard. It runs on the agency's own computer and is buil
 | Admin can preview what any employee sees (read-only) | Done |
 | Higgsfield connection: the admin signs in once, Tracker reads the real balance and creates real videos | Built. Higgsfield's sign-in was checked against the real service; the rest was tested against a stand-in, so **the first real run on your computer is the final test** |
 | Credit budget that makes a month of credits last | Done |
-| Euka and Slack connections | **Not connected yet.** Tracker starts with sample data, clearly labelled |
+| Slack connection: reads the channels the admin chooses, shows them in News and on each brand's page, with a weekly activity summary | Built and tested against a stand-in for Slack. **The first run with your real workspace is the final test** |
+| Euka connection | **Not connected yet.** Tracker starts with sample data, clearly labelled |
 | Editing with MoviePy: opening caption, end card, music | Done. Runs on the Tracker computer and costs no credits |
 | Video pipeline | The **video** and **editing** steps are real once Higgsfield is connected. Script, supervisor and posting are still placeholders, and say so on screen |
 | Tracking how posted videos perform | **Not built yet.** See "Tracking posted videos" below for the plan |
@@ -66,6 +67,54 @@ For the first real request, pick **Draft, 5 seconds, 1 variation** (5 credits) t
 Until Higgsfield is connected, video requests are **practice runs**: nothing is created and no credits are spent.
 
 Finished videos are saved in `data/videos` and can be played and downloaded from the request. Posting to social accounts is not connected yet, so an approved video is downloaded and posted by hand.
+
+## Connect Slack
+
+Tracker reads Slack through a small Slack app that you create inside your own workspace. It only reads the channels you choose; it never posts.
+
+**1. Create the Slack app** (once, by a Slack workspace admin)
+
+1. Go to https://api.slack.com/apps and choose **Create New App → From a manifest**.
+2. Pick your workspace, paste the manifest below, and create the app.
+3. Press **Install to Workspace** and allow it.
+4. Open **OAuth & Permissions** and copy the **Bot User OAuth Token**. It starts with `xoxb-`.
+
+```yaml
+display_information:
+  name: Tracker
+  description: Lets the agency's Tracker dashboard read the channels it is invited to.
+features:
+  bot_user:
+    display_name: Tracker
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - channels:read
+      - channels:history
+      - groups:read
+      - groups:history
+      - users:read
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+```
+
+**2. Invite the app to each channel it should read.** In Slack, open the channel and type `/invite @Tracker`. It cannot read a channel it hasn't been invited to, including private ones.
+
+**3. Connect it in Tracker.** On the computer that runs Tracker, open `http://localhost:4400`, go to **Connections**, paste the token in the Slack card and press **Connect Slack**. Tracker only accepts the token on that computer, so it never travels over the office network.
+
+**4. Choose channels.** In **Connections → Slack channels**, tick the channels to read and choose who may see each one:
+
+- **People with a brand:** employees who have that brand and the "Read News" permission see the channel's messages.
+- **Admins only:** for internal channels. This is the default.
+
+Tracker reads the last two weeks the first time, then checks every 10 minutes. Messages appear in **News** (with a "Slack this week" summary of how busy each channel and person was) and on each brand's page.
+
+Until Claude is connected, messages are shown as written. Summaries and evaluations ("Scale it", "Watch", "Fix now") come with Claude.
+
+Disconnecting makes Tracker forget the token and stop reading. Messages already collected stay in Tracker's database.
 
 ## Editing
 
@@ -131,6 +180,7 @@ News posts are written as text, so a post can mention results or spend. Only giv
 - Passwords are stored hashed, never as plain text. Five wrong tries lock that sign-in for a minute.
 - Employees only ever receive the brands and numbers they were granted; the server strips the rest before sending.
 - Removing an employee signs them out immediately.
+- Tracker's Slack token is stored in the `data` folder too, and is never sent to anyone's browser. Slack messages are only sent to people allowed to see that channel.
 - Tracker's access to Higgsfield is stored in the `data` folder on the host computer and is never sent to anyone's browser. Keep that folder private. **Disconnect** in Connections makes Tracker forget it.
 - Tracker uses plain `http` on your office network. Use it on a network you trust, not on public Wi-Fi, and don't open its port to the internet.
 
@@ -145,6 +195,7 @@ News posts are written as text, so a post can mention results or spend. Only giv
 | `server/pipeline.js` | The video request pipeline. Steps that are still placeholders are marked `LIVE` |
 | `server/budget.js` | The credit budget rules and prices |
 | `server/edit.py`, `server/editor.js` | The editing step (MoviePy) |
+| `server/slack.js` | The Slack connection |
 | `server/higgsfield.js`, `server/mcp.js` | The Higgsfield connection |
 | `dashboard/` | The interface. `data.js` holds the sample data |
 | `tests/` | Automated checks (below) |
@@ -157,11 +208,11 @@ Opening `dashboard/index.html` directly, without the server, still works as a no
 npm test
 ```
 
-Runs five checks: the server's sign-in and permission rules; the credit budget and the Higgsfield connection (against a stand-in for Higgsfield, so no credits are spent); the editing step on a real clip; the demo in a browser as every person; and the real server in a browser. The editing check needs Python with MoviePy and the two browser checks need Playwright.
+Runs six checks: the server's sign-in and permission rules; the credit budget and the Higgsfield connection (against a stand-in for Higgsfield, so no credits are spent); the editing step on a real clip; the Slack connection (against a stand-in for Slack); the demo in a browser as every person; and the real server in a browser. The editing check needs Python with MoviePy and the two browser checks need Playwright.
 
 ## Next
 
 1. **Higgsfield, deeper:** link each brand's products and photos so videos show the real product. (Higgsfield's own TikTok publishing can't be used from Tracker: it only works inside Higgsfield's chat apps and only for files hosted by Higgsfield.)
-2. **Euka and Slack sync:** real brands, videos and results, and the News agent writing real posts.
-3. **Claude:** real scripts, supervisor checks and Tracker AI answers.
+2. **Euka sync:** real brands, videos and results.
+3. **Claude:** turns Slack messages and Euka results into summarised, evaluated News posts; also real scripts, supervisor checks and Tracker AI answers.
 4. **Posting and tracking:** each brand's social accounts connected through the platform's official login. See "Tracking posted videos" above.

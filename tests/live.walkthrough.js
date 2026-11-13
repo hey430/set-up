@@ -8,6 +8,7 @@ const path = require("node:path");
 const { chromium } = require("playwright");
 const { createApp } = require("../server/server");
 const { createMock } = require("./mock-higgsfield");
+const { createMockSlack, fakeToken } = require("./mock-slack");
 
 const shots = process.argv[2]; // optional folder for screenshots
 const issues = [];
@@ -17,6 +18,8 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   const dbFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "tracker-test-")), "tracker.db");
   const mock = createMock({ credits: 600 }); // a stand-in for Higgsfield
   process.env.HIGGSFIELD_MCP_URL = (await mock.listen()) + "/mcp";
+  const slackMock = createMockSlack(); // a stand-in for Slack
+  process.env.SLACK_API_URL = await slackMock.listen();
   let app = createApp({ dbFile, tickMs: 40, pollMs: 60 });
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   const port = app.server.address().port, U = "http://127.0.0.1:" + port;
@@ -44,6 +47,28 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   check(await a.isVisible(".sample-pill"), "sample data must be labelled");
   check(!(await a.$("#viewer")), "the demo person-switcher must not exist on the server");
   await snap(a, "live-2-home");
+
+  // ----- admin connects Slack and chooses channels -----
+  await a.goto(U + "/#connections"); await a.waitForSelector("#slack-token");
+  await a.fill("#slack-token", fakeToken("b", 0, 0, "wrong123")); await a.click("#slack-form button[type=submit]");
+  await a.waitForSelector(".toast:has-text(\"didn't accept that token\")");
+  await a.fill("#slack-token", slackMock.state.token); await a.click("#slack-form button[type=submit]");
+  await a.waitForSelector("#slack-channels-form");
+  check(!(await a.content()).includes("xoxb-"), "the Slack token must not stay on the page");
+  await snap(a, "live-2a-slack-channels");
+  await a.check("[name=watch][value=C1]"); await a.selectOption('[name="see-C1"]', "lumora-skin");
+  await a.check("[name=watch][value=C2]"); await a.selectOption('[name="see-C2"]', "pawsome-pantry");
+  await a.check("[name=watch][value=C3]");
+  await a.click("#slack-channels-form button[type=submit]");
+  await a.waitForSelector(".toast:has-text('new Slack messages read')");
+  await a.goto(U + "/#news"); await a.waitForSelector(".post");
+  check(await a.isVisible("text=Serum Spark Ad passed 5x ROAS"), "Slack messages should appear in News");
+  check(await a.isVisible("text=Margins on Lumora"), "the admin sees the admin-only channel");
+  check(await a.isVisible("text=Slack this week"), "the Slack activity summary should show");
+  await a.click('[data-news-type="slack"]'); await a.waitForTimeout(150);
+  check((await a.$$(".post")).length === 8, "the Slack filter should show exactly the Slack messages");
+  await snap(a, "live-2b-news-slack");
+  await a.goto(U + "/#brand-lumora-skin"); await a.waitForSelector("text=Latest from Slack");
 
   // ----- admin adds an employee -----
   await a.goto(U + "/#employees"); await a.waitForSelector('[data-action="add-employee"]');
@@ -76,6 +101,9 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   check((await s.$$(".br")).length === 1, "Sara should see exactly one brand");
   check(!(await s.$('a[href="#employees"]')), "Sara must not see Employees");
   check(!(await s.isVisible("text=Ad spend")), "Sara must not see ad spend");
+  await s.goto(U + "/#news"); await s.waitForSelector(".post");
+  check(await s.isVisible("text=Serum Spark Ad passed 5x ROAS"), "Sara should see her brand's Slack channel");
+  check(!(await s.content()).includes("Margins on Lumora") && !(await s.content()).includes("creators onboarded. Samples"), "Sara must not see admin-only or other brands' Slack messages");
   await s.goto(U + "/#employees"); await s.waitForTimeout(300);
   check((await s.evaluate(() => location.hash)) !== "#employees", "Sara must be sent away from the admin page");
   await snap(s, "live-4-employee-home");
@@ -178,6 +206,6 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   console.log(issues.length ? `\n${issues.length} issue(s) found` : "\nNo issues found");
   await browser.close();
   await new Promise((r) => app.server.close(r));
-  await mock.close();
+  await mock.close(); await slackMock.close();
   process.exit(issues.length ? 1 : 0);
 })().catch((e) => { console.error("TEST CRASHED:", e.message.split("\n")[0], (e.stack.match(/live\.walkthrough\.js:\d+/) || [""])[0]); process.exit(2); });

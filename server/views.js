@@ -70,6 +70,7 @@ function stateFor(db, viewer, actor, extras = {}) {
     lastSync: db.setting("lastSync", null),
     credits: extras.credits || null, // the credit budget, for people who can request videos
     editing: extras.editing || null, // what the editing step can do on this computer
+    slack: extras.slack || null,     // Slack messages this person may see
     connections: db.setting("connections", { slack: false, euka: false, higgsfield: false, claude: false }),
     brands: brands.map((b) => brandFor(viewer, b)),
     accounts,

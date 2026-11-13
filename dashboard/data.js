@@ -259,4 +259,19 @@
       { id: "n12", brand: "ridgeline-active", type: "news", time: "2026-10-29T12:10:00", channel: "#client-ridgeline", title: "Black Friday pricing locked", body: "The client sends the creative brief on Friday.", verdict: "info", evaluation: "Reserve budget for the leggings creative; it carries 55% of GMV.", metrics: [] },
     ],
   };
+
+  // Sample Slack view for the demo, built from each sample brand's channel.
+  const data = window.DASHBOARD_DATA;
+  const messages = data.brands
+    .flatMap((b) => b.slack.map((m, i) => ({ id: b.id + "-" + i, channel: m.channel, brand: b.id, author: m.author, text: m.text, replies: 0, time: m.time })))
+    .sort((a, z) => z.time.localeCompare(a.time));
+  const tally = (key) => Object.entries(messages.reduce((a, m) => ((a[m[key]] = (a[m[key]] || 0) + 1), a), {})).sort((a, z) => z[1] - a[1]);
+  data.slack = {
+    connected: true, team: data.agency, lastSync: data.lastSync.slack, messages,
+    activity: {
+      week: messages.length, prevWeek: 9, people: new Set(messages.map((m) => m.author)).size,
+      channels: tally("channel").map(([name, count]) => ({ name, brand: messages.find((m) => m.channel === name).brand, count })),
+      top: tally("author").slice(0, 5).map(([name, count]) => ({ name, count })),
+    },
+  };
 })();

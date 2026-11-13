@@ -458,23 +458,40 @@
   }
 
   /* ================= NEWS ================= */
+  // Slack messages this person may see: real ones from the server, or the sample ones in the demo.
+  // The server already filters these per person; the same rule is applied here so the demo behaves the same way.
+  const slackMessages = () => (can("news") && D.slack && D.slack.messages ? D.slack.messages.filter((m) => (m.brand ? brandOk(m.brand) : isAdmin())) : []);
+  const dayKey = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   function viewNews() {
-    const all = D.news.filter((n) => brandOk(n.brand)).sort((a, z) => z.time.localeCompare(a.time));
+    const agent = D.news.filter((n) => brandOk(n.brand));
+    const slack = slackMessages().map((m) => ({ ...m, type: "slack" }));
+    const all = [...agent, ...slack].sort((a, z) => new Date(z.time) - new Date(a.time));
     if (state.newsBrand !== "all" && !brandOk(state.newsBrand)) state.newsBrand = "all";
+    if (state.newsType === "slack" && !slack.length) state.newsType = "all";
     const list = all.filter((n) => (state.newsType === "all" || n.type === state.newsType) && (state.newsBrand === "all" || n.brand === state.newsBrand));
     const days = {};
-    list.forEach((n) => { (days[n.time.slice(0, 10)] = days[n.time.slice(0, 10)] || []).push(n); });
+    list.forEach((n) => { (days[dayKey(n.time)] = days[dayKey(n.time)] || []).push(n); });
     const cnt = (t) => all.filter((n) => t === "all" || n.type === t).length;
-    const verdicts = Object.keys(VERDICT).map((v) => [v, all.filter((n) => n.verdict === v).length]);
+    const verdicts = Object.keys(VERDICT).map((v) => [v, agent.filter((n) => n.verdict === v).length]);
     const channels = [...new Set(all.map((n) => n.channel))];
+    const types = [["all", "All"], ["result", "Results"], ["news", "News"], ...(slack.length ? [["slack", "Slack"]] : [])];
+    const s = D.slack, cn = D.connections || {}, act = s && s.activity;
+    const intro = !LIVE ? "The News agent reads your Slack channels and Euka results, evaluates what happened, and posts it here under the brand's name."
+      : s && s.connected ? "Messages from the Slack channels your admin chose appear here as they are, newest first."
+      : "Results and updates for your brands appear here.";
+    const notice = !LIVE ? ""
+      : s && s.connected && !cn.claude ? '<div class="callout">Slack messages are shown as written. Summaries and evaluations (Scale it, Watch, Fix now) need Claude, which isn\'t connected yet.</div>'
+      : (!s || !s.connected) && isAdmin() ? '<div class="callout">Slack isn\'t connected yet. Connect it in <a href="#connections">Connections</a> to bring your channels\' messages here.</div>' : "";
+    const delta7 = act && act.prevWeek ? Math.round(((act.week - act.prevWeek) / act.prevWeek) * 100) : null;
     return `
       ${topline()}
       <div class="page-head">
-        <div><span class="eyebrow">News</span><h1>Performance news</h1><p>The News agent reads your Slack channels and Euka results, evaluates what happened, and posts it here under the brand's name.</p></div>
+        <div><span class="eyebrow">News</span><h1>Performance news</h1><p>${intro}</p></div>
       </div>
+      ${notice}
       <div class="section-head">
         <div class="chips" role="group" aria-label="Filter by type">
-          ${[["all", "All"], ["result", "Results"], ["news", "News"]].map(([v, l]) => `<button class="chip" data-news-type="${v}" aria-pressed="${state.newsType === v}">${l}<span class="num">${cnt(v)}</span></button>`).join("")}
+          ${types.map(([v, l]) => `<button class="chip" data-news-type="${v}" aria-pressed="${state.newsType === v}">${l}<span class="num">${cnt(v)}</span></button>`).join("")}
         </div>
         <select class="select" id="news-brand" aria-label="Filter by brand">
           <option value="all">All brands</option>
@@ -485,16 +502,83 @@
         <section class="feed" aria-label="News feed">
           ${list.length ? Object.entries(days).map(([d, items]) => `
             <div class="day">${new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</div>
-            ${items.map(newsPost).join("")}`).join("") : '<div class="empty">No posts match these filters.</div>'}
+            ${items.map((n) => (n.type === "slack" ? slackPost(n) : newsPost(n))).join("")}`).join("") : `<div class="empty">${all.length ? "No posts match these filters." : "Nothing here yet."}</div>`}
         </section>
         <aside class="card" style="position:sticky;top:72px">
-          <h2>At a glance</h2>
-          <div class="side-list">${verdicts.map(([v, c]) => `<div><span class="pill ${VERDICT[v][1]}">${VERDICT[v][0]}</span><b class="num">${c}</b></div>`).join("")}</div>
-          <div class="section-head" style="margin-top:4px"><h3>Listening to</h3></div>
-          <div class="side-list">${channels.map((c) => `<div><span style="font:500 12.5px var(--font-mono);color:var(--purple-hi)">${esc(c)}</span><span class="dot"></span></div>`).join("")}</div>
-          <p class="muted" style="margin:0;font-size:12.5px">New posts appear automatically after each Slack and Euka sync.</p>
+          ${act && (s.connected || slack.length) ? `
+          <h2>Slack this week</h2>
+          <div class="hs-grid">
+            <div class="hs"><b>${act.week}</b><span>Messages${delta7 === null ? "" : ` · ${delta7 >= 0 ? "+" : "−"}${Math.abs(delta7)}% vs last week`}</span></div>
+            <div class="hs"><b>${act.people}</b><span>${act.people === 1 ? "Person" : "People"} active</span></div>
+          </div>
+          ${act.channels.length ? `<div class="side-list">${act.channels.map((c) => `<div><span class="channel">${esc(c.name)}</span><b class="num">${c.count}</b></div>`).join("")}</div>` : '<span class="muted" style="font-size:12.5px">No messages in the last 7 days.</span>'}
+          ${act.top.length ? `<div class="section-head" style="margin-top:4px"><h3>Most active</h3></div><div class="side-list">${act.top.map((p) => `<div><span>${esc(p.name)}</span><b class="num">${p.count}</b></div>`).join("")}</div>` : ""}` : ""}
+          ${agent.length ? `<h2>At a glance</h2>
+          <div class="side-list">${verdicts.map(([v, c]) => `<div><span class="pill ${VERDICT[v][1]}">${VERDICT[v][0]}</span><b class="num">${c}</b></div>`).join("")}</div>` : ""}
+          ${channels.length ? `<div class="section-head" style="margin-top:4px"><h3>Listening to</h3></div>
+          <div class="side-list">${channels.map((c) => `<div><span class="channel">${esc(c)}</span><span class="dot"></span></div>`).join("")}</div>` : ""}
+          <p class="muted" style="margin:0;font-size:12.5px">${LIVE ? (s && s.connected ? `Slack is read every 10 minutes.${s.lastSync ? " Last read " + stamp(new Date(s.lastSync).toISOString()) + "." : ""}` : "Slack isn't connected.") : "New posts appear automatically after each Slack and Euka sync."}</p>
         </aside>
       </div>`;
+  }
+  function slackPost(m) {
+    const b = m.brand && brandById(m.brand);
+    return `<article class="post">
+      <span class="avatar" style="width:32px;height:32px">${esc(initials(m.author) || "?")}</span>
+      <div class="post-body">
+        <div class="post-top"><b>${esc(m.author)}</b><span class="pill plain">Slack</span><span class="pill plain">${esc(b ? b.name : "Admins only")}</span><time datetime="${m.time}">${clock(m.time)}</time></div>
+        <p style="color:var(--ink);white-space:pre-line">${esc(m.text)}</p>
+        <div class="post-actions">${b ? `<a class="btn sm" href="#brand-${b.id}">Open brand</a>` : ""}${m.replies ? `<span class="sub">${m.replies} repl${m.replies === 1 ? "y" : "ies"} in Slack</span>` : ""}<span class="src">${esc(m.channel)} · Slack</span></div>
+      </div>
+    </article>`;
+  }
+  // The latest Slack messages for one brand, shown on its page.
+  function brandSlackCard(b) {
+    if (!can("news")) return "";
+    const msgs = slackMessages().filter((m) => m.brand === b.id).slice(0, 5);
+    if (!msgs.length && !(LIVE && isAdmin() && D.slack && D.slack.connected)) return "";
+    return `<section class="card">
+      <div class="section-head"><h2>Latest from Slack</h2>${msgs[0] ? `<span class="channel">${esc(msgs[0].channel)}</span>` : ""}</div>
+      ${msgs.length ? `<div class="side-list" style="gap:14px">${msgs.map((m) => `<div style="align-items:flex-start;justify-content:flex-start"><span class="avatar">${esc(initials(m.author) || "?")}</span>
+        <span style="min-width:0"><b style="font-weight:600">${esc(m.author)}</b> <span class="sub">${stamp(m.time)}</span><br><span style="white-space:pre-line">${esc(m.text)}</span></span></div>`).join("")}</div>
+        <a href="#news" style="font-size:12.5px">See all in News</a>`
+        : '<span class="muted">No Slack channel is linked to this brand yet. Choose one in <a href="#connections">Connections</a>.</span>'}
+    </section>`;
+  }
+  function slackControls(on) {
+    const s = D.slack || {};
+    return on
+      ? `<span class="sub">${esc(s.team || "")} · ${s.lastSync ? "last read " + stamp(new Date(s.lastSync).toISOString()) : "not read yet"}</span>
+         <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-action="slack-sync">Read now</button><button class="btn sm" data-action="slack-disconnect">Disconnect</button></div>`
+      : `<form id="slack-form" class="field"><label for="slack-token">Bot token from your Slack app</label>
+           <input id="slack-token" type="password" autocomplete="off" placeholder="xoxb-…" required>
+           <div><button class="btn sm primary" type="submit">Connect Slack</button></div></form>
+         <span class="hint">Create the Slack app first; the README has the steps. Paste the token on the computer that runs Tracker.</span>`;
+  }
+  function slackChannelsCard() {
+    const s = D.slack;
+    if (!LIVE || !s || !s.connected || !s.channels) return "";
+    return `<section class="card" id="slack-channels">
+      <div class="card-head"><div><h2>Slack channels</h2><span class="sub">Choose which channels Tracker reads and who may see each one. It can only read channels its Slack app has been invited to, and it never posts.</span></div></div>
+      <form id="slack-channels-form" style="display:flex;flex-direction:column;gap:14px">
+        <div class="table-wrap boxed"><table>
+          <thead><tr><th style="width:56px">Read</th><th>Channel</th><th>Slack app</th><th>Who can see its messages</th></tr></thead>
+          <tbody>${s.channels.map((c) => `<tr>
+            <td><input type="checkbox" name="watch" value="${c.id}" ${c.watched ? "checked" : ""} aria-label="Read #${esc(c.name)}"></td>
+            <td><b style="font-weight:600">#${esc(c.name)}</b> ${c.private ? '<span class="pill plain">Private</span>' : ""}<div class="sub">${c.members} member${c.members === 1 ? "" : "s"}</div>${c.error && c.watched ? `<div class="sub" style="color:var(--warn)">${esc(c.error)}</div>` : ""}</td>
+            <td>${c.member ? '<span class="pill good">Invited</span>' : '<span class="pill plain">Not invited</span>'}</td>
+            <td><select class="select" name="see-${c.id}" aria-label="Who can see #${esc(c.name)}"><option value="">Admins only</option>${D.brands.map((b) => `<option value="${b.id}" ${c.brand === b.id ? "selected" : ""}>People with ${esc(b.name)}</option>`).join("")}</select></td>
+          </tr>`).join("") || '<tr><td colspan="4" class="muted" style="text-align:center;padding:20px">Slack shows no channels to this app yet.</td></tr>'}</tbody>
+        </table></div>
+        <div class="modal-foot"><span class="hint" style="margin-right:auto">To invite the app, open the channel in Slack and type /invite @Tracker.</span><button class="btn primary" type="submit">Save and read now</button></div>
+      </form>
+    </section>`;
+  }
+  function confirmSlackDisconnect() {
+    openModal(`
+      <div class="modal-head"><div><h2>Disconnect Slack?</h2><p>Tracker stops reading Slack and forgets its token. Messages it already collected stay in News. You can connect again at any time.</p></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="modal-foot"><button class="btn ghost" data-close>Keep connected</button><button class="btn danger" id="confirm-slack-off">Disconnect</button></div>`);
+    $("#confirm-slack-off").addEventListener("click", () => { closeOverlays(); change(() => api("POST", "/api/slack/disconnect"), () => toast("Slack disconnected.")); });
   }
   function newsPost(n) {
     const b = brandById(n.brand); const [vl, vt] = VERDICT[n.verdict];
@@ -579,7 +663,8 @@
           <div class="side-list">${accounts.map((a) => `<div><span><b style="font-weight:600">${esc(a.platform)}</b> <span class="muted">${esc(a.handle)}</span></span>${a.connected ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected</span>'}</div>`).join("") || '<span class="muted">No accounts yet.</span>'}</div>
           <p class="muted" style="margin:0;font-size:12.5px">${isAdmin() ? 'Manage these in <a href="#connections">Connections</a>.' : "Only an admin can connect accounts."}</p>
         </section>
-      </div>`;
+      </div>
+      ${brandSlackCard(b)}`;
   }
   function thumb(a) {
     const len = a.duration ? `0:${String(a.duration).padStart(2, "0")}` : "Carousel";
@@ -702,7 +787,7 @@
   function viewConnections() {
     const cn = LIVE ? D.connections || {} : { slack: true, euka: true, higgsfield: true, claude: true };
     const svc = [
-      ["S", "Slack", cn.slack, "Reads client channels for the News agent. Posts approvals and alerts."],
+      ["S", "Slack", cn.slack, "Reads the channels you choose, for News and each brand's page. Tracker only reads; it never posts."],
       ["E", "Euka", cn.euka, "Brands, creators, videos, specs and TikTok Shop results."],
       ["H", "Higgsfield", cn.higgsfield, "Generates new videos from the scripts the agents write."],
       ["AI", "Claude", cn.claude, "Runs the AI assistant and the script and supervisor agents."],
@@ -711,7 +796,8 @@
     return `
       ${topline()}
       <div class="page-head"><div><span class="eyebrow">Admin · Connections</span><h1>Connections</h1><p>Connected once by an admin and shared by everyone, so employees never log in to these services or see the passwords.</p></div></div>
-      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? `<span class="pill good">${n.startsWith("Editing") ? "Ready" : "Connected"}</span>` : `<span class="pill plain">${n.startsWith("Editing") ? "Not installed" : "Not connected yet"}</span>`}</div><p>${d}</p>${n === "Higgsfield" && LIVE ? higgsfieldControls(on) : ""}${n.startsWith("Editing") && LIVE ? editingNotes(on) : ""}</div>`).join("")}</div>
+      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? `<span class="pill good">${n.startsWith("Editing") ? "Ready" : "Connected"}</span>` : `<span class="pill plain">${n.startsWith("Editing") ? "Not installed" : "Not connected yet"}</span>`}</div><p>${d}</p>${n === "Slack" && LIVE ? slackControls(on) : ""}${n === "Higgsfield" && LIVE ? higgsfieldControls(on) : ""}${n.startsWith("Editing") && LIVE ? editingNotes(on) : ""}</div>`).join("")}</div>
+      ${slackChannelsCard()}
       ${budgetCard()}
       ${LIVE && D.sample ? `<div class="callout warn preview-bar"><span>Tracker is showing <b>sample data</b>: made-up brands, videos and news.</span><button class="btn sm" data-action="clear-sample">Remove sample data</button></div>` : ""}
       <div class="section-head"><h2>Social accounts for posting</h2></div>
@@ -1469,6 +1555,8 @@
       else api("POST", "/api/higgsfield/connect").then((out) => { location.href = out.url; }).catch((e) => toast(e.message));
     }
     else if (act === "hf-disconnect") confirmDisconnect();
+    else if (act === "slack-disconnect") confirmSlackDisconnect();
+    else if (act === "slack-sync") change(() => api("POST", "/api/slack/sync"), (out) => toast(out.added ? `${out.added} new Slack message${out.added === 1 ? "" : "s"} read.` : "Slack is up to date."));
     else if (act === "account") accountMenu();
     else if (act === "exit-preview") exitPreview();
     else if (act === "clear-sample") confirmClearSample();
@@ -1478,6 +1566,18 @@
   });
   $("#scrim").addEventListener("click", closeOverlays);
   $("#nav-scrim").addEventListener("click", () => setNavOpen(false));
+  document.addEventListener("submit", (e) => {
+    if (e.target.id === "slack-form") {
+      e.preventDefault();
+      const token = $("#slack-token").value.trim();
+      change(() => api("POST", "/api/slack/connect", { token }), () => toast("Slack is connected. Now choose which channels to read."));
+    }
+    if (e.target.id === "slack-channels-form") {
+      e.preventDefault();
+      const channels = D.slack.channels.map((c) => ({ id: c.id, watched: !!$(`[name=watch][value="${c.id}"]`).checked, brand: $(`[name="see-${c.id}"]`).value || null }));
+      change(() => api("POST", "/api/slack/channels", { channels }), (out) => toast(`Saved. ${out.added || 0} new Slack message${out.added === 1 ? "" : "s"} read.`));
+    }
+  });
   document.addEventListener("submit", (e) => {
     if (e.target.id !== "budget-form") return;
     e.preventDefault();

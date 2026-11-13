@@ -27,6 +27,7 @@ const pipeline = require("./pipeline");
 const budget = require("./budget");
 const higgsfield = require("./higgsfield");
 const editorLib = require("./editor");
+const slackLib = require("./slack");
 
 const ROOT = path.resolve(__dirname, "..");
 const STATIC = path.join(ROOT, "dashboard");
@@ -40,13 +41,16 @@ const fail = (status, message) => { throw new HttpError(status, message); };
 const text = (v, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = path.join(STATIC, "data.js"), tickMs = 650, pollMs = 8000, office = false } = {}) {
+function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = path.join(STATIC, "data.js"), tickMs = 650, pollMs = 8000, slackEveryMs = 10 * 60_000, office = false } = {}) {
   const db = open(dbFile);
   const videoDir = dbFile === ":memory:" ? path.join(os.tmpdir(), "tracker-videos-" + process.pid) : path.join(path.dirname(dbFile), "videos");
   const dataDir = path.dirname(videoDir);
   const hf = higgsfield.create(db);
   const editor = editorLib.create({ musicDir: path.join(dataDir, "music"), fontDir: path.join(dataDir, "fonts") });
   const pipe = pipeline.create({ db, hf, budget, editor, videoDir, pollMs });
+  const slack = slackLib.create(db);
+  slack.start(slackEveryMs);
+  const slackFor = (viewer) => slackLib.viewFor(db, viewer, views);
   // What the editing step can do on this computer, for people who can request videos.
   const editingFor = (viewer) => (views.isAdmin(viewer) || views.can(viewer, "create") ? { available: editor.known().ok, version: editor.known().version || "", music: editor.music() } : null);
   const ticker = pipe.start(tickMs);
@@ -85,7 +89,7 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     if (!actor) return { user: null, agency: db.setting("agency", "Your Agency") };
     await hf.refreshBalance(); // at most once a minute
     await editor.status();
-    return { state: views.stateFor(db, viewer, actor, { credits: creditsFor(viewer), editing: editingFor(viewer) }) };
+    return { state: views.stateFor(db, viewer, actor, { credits: creditsFor(viewer), editing: editingFor(viewer), slack: slackFor(viewer) }) };
   }, { open: true });
 
   route("POST", /^\/api\/setup$/, ({ body, res }) => {
@@ -269,6 +273,26 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
 
   route("POST", /^\/api\/higgsfield\/disconnect$/, () => { hf.disconnect(); return { ok: true }; }, { admin: true });
 
+  // ----- Slack -----
+  // Secrets such as the Slack token are only accepted on the host computer itself,
+  // because Tracker uses plain http on the office network.
+  const onHost = (req) => /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || "");
+  const viaSlack = async (fn) => { try { return await fn(); } catch (e) { if (e instanceof HttpError) throw e; fail(e.code && e.code !== "unreachable" ? 400 : 502, e.message || "Slack didn't answer."); } };
+
+  route("POST", /^\/api\/slack\/connect$/, ({ req, body }) => {
+    if (!onHost(req)) fail(400, "Do this on the computer that runs Tracker: open Tracker there at http://localhost and paste the token. That keeps the token off the office network.");
+    return viaSlack(async () => { await slack.connect(body.token); return { ok: true }; });
+  }, { admin: true });
+
+  route("POST", /^\/api\/slack\/disconnect$/, () => { slack.disconnect(); return { ok: true }; }, { admin: true });
+
+  route("POST", /^\/api\/slack\/channels$/, ({ body }) => {
+    slack.setChannels(body.channels, brandExists);
+    return viaSlack(async () => ({ ok: true, ...(await slack.sync()) }));
+  }, { admin: true });
+
+  route("POST", /^\/api\/slack\/sync$/, () => viaSlack(async () => { await slack.refreshChannels(); return { ok: true, ...(await slack.sync()) }; }), { admin: true });
+
   // ----- video requests -----
   route("GET", /^\/api\/jobs$/, ({ viewer }) => ({ jobs: views.jobsFor(db, viewer), credits: creditsFor(viewer) }), { preview: true });
 
@@ -441,8 +465,8 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
       else res.end();
     }
   });
-  server.on("close", () => { clearInterval(ticker); try { db.close(); } catch {} });
-  return { server, db, hf, pipe };
+  server.on("close", () => { clearInterval(ticker); slack.stop(); try { db.close(); } catch {} });
+  return { server, db, hf, pipe, slack };
 }
 
 // ---------- command line ----------

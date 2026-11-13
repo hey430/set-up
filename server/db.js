@@ -38,6 +38,21 @@ function open(file) {
       platform TEXT NOT NULL, handle TEXT NOT NULL, connected INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS news (id TEXT PRIMARY KEY, brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE, time TEXT NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS slack_channels (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, private INTEGER NOT NULL DEFAULT 0,
+      member INTEGER NOT NULL DEFAULT 0,   -- 1 = Tracker's Slack app has been invited to it
+      members INTEGER NOT NULL DEFAULT 0,
+      watched INTEGER NOT NULL DEFAULT 0,  -- 1 = the admin chose to read this channel
+      brand_id TEXT,                       -- whose messages these are; empty = admins only
+      last_ts TEXT, error TEXT
+    );
+    CREATE TABLE IF NOT EXISTS slack_messages (
+      channel_id TEXT NOT NULL, ts TEXT NOT NULL, user_id TEXT NOT NULL DEFAULT '', author TEXT NOT NULL,
+      text TEXT NOT NULL, replies INTEGER NOT NULL DEFAULT 0, time INTEGER NOT NULL,
+      PRIMARY KEY (channel_id, ts)
+    );
+    CREATE INDEX IF NOT EXISTS slack_messages_time ON slack_messages (time);
+    CREATE TABLE IF NOT EXISTS slack_users (id TEXT PRIMARY KEY, name TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS charges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id TEXT NOT NULL, brand_id TEXT NOT NULL, user_id TEXT NOT NULL, user_name TEXT NOT NULL, tier TEXT NOT NULL,
