@@ -8,6 +8,6 @@
     "start": "node server/server.js",
     "start:office": "node server/server.js --office",
     "reset-admin": "node server/server.js --reset-admin",
-    "test": "node --test tests/server.test.js tests/credits.test.js && node tests/walkthrough.js && node tests/live.walkthrough.js"
+    "test": "node --test tests/server.test.js tests/credits.test.js tests/editing.test.js && node tests/walkthrough.js && node tests/live.walkthrough.js"
   }
 }

@@ -26,6 +26,7 @@ const views = require("./views");
 const pipeline = require("./pipeline");
 const budget = require("./budget");
 const higgsfield = require("./higgsfield");
+const editorLib = require("./editor");
 
 const ROOT = path.resolve(__dirname, "..");
 const STATIC = path.join(ROOT, "dashboard");
@@ -42,8 +43,12 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g
 function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = path.join(STATIC, "data.js"), tickMs = 650, pollMs = 8000, office = false } = {}) {
   const db = open(dbFile);
   const videoDir = dbFile === ":memory:" ? path.join(os.tmpdir(), "tracker-videos-" + process.pid) : path.join(path.dirname(dbFile), "videos");
+  const dataDir = path.dirname(videoDir);
   const hf = higgsfield.create(db);
-  const pipe = pipeline.create({ db, hf, budget, videoDir, pollMs });
+  const editor = editorLib.create({ musicDir: path.join(dataDir, "music"), fontDir: path.join(dataDir, "fonts") });
+  const pipe = pipeline.create({ db, hf, budget, editor, videoDir, pollMs });
+  // What the editing step can do on this computer, for people who can request videos.
+  const editingFor = (viewer) => (views.isAdmin(viewer) || views.can(viewer, "create") ? { available: editor.known().ok, version: editor.known().version || "", music: editor.music() } : null);
   const ticker = pipe.start(tickMs);
 
   const hasAdmin = () => !!db.get("SELECT 1 AS x FROM users WHERE role = 'admin' AND status != 'removed'");
@@ -79,7 +84,8 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     const { actor, viewer } = context(req, url);
     if (!actor) return { user: null, agency: db.setting("agency", "Your Agency") };
     await hf.refreshBalance(); // at most once a minute
-    return { state: views.stateFor(db, viewer, actor, { credits: creditsFor(viewer) }) };
+    await editor.status();
+    return { state: views.stateFor(db, viewer, actor, { credits: creditsFor(viewer), editing: editingFor(viewer) }) };
   }, { open: true });
 
   route("POST", /^\/api\/setup$/, ({ body, res }) => {
@@ -295,6 +301,8 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     if (!t.lengths.includes(seconds)) fail(400, `${t.label} videos can be ${t.lengths.join(", ")} seconds long.`);
     const variations = Math.min(3, Math.max(1, Math.round(Number(body.variations) || 1)));
     const { cost, real } = await priceAndCheck(actor, t, seconds, variations);
+    const e = body.edit && typeof body.edit === "object" ? body.edit : {};
+    const edit = { caption: text(e.caption, 90), endCard: !!e.endCard, cta: text(e.cta, 30) || "Shop now", music: editor.music().includes(e.music) ? e.music : "" };
 
     const brand = JSON.parse(row.data);
     const wanted = Array.isArray(body.accounts) ? body.accounts.map(Number) : [];
@@ -304,6 +312,7 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
     const job = pipe.newJob({
       id: "VR-" + (101 + n), brand: brandId, brandName: brand.name, by: actor.name, product: text(body.product, 120) || "Main product", style: text(body.style, 60) || "UGC talking to camera",
       brief, tier: t.key, tierLabel: t.label, seconds, variations, accounts, cost, simulated: !real, hue: (hue % 80) + 240,
+      edit,
     });
     job.chargeId = addCharge(job, actor, cost, real);
     db.run("INSERT INTO jobs (id, brand_id, status, created_at, data) VALUES (?, ?, ?, ?, ?)", job.id, brandId, job.status, Date.now(), JSON.stringify(job));
@@ -337,11 +346,13 @@ function createApp({ dbFile = path.join(ROOT, "data", "tracker.db"), dataFile = 
   });
 
   // Plays or downloads a finished clip. Same brand rules as everything else.
-  route("GET", /^\/api\/jobs\/([\w-]+)\/video\/(\d)$/, ({ viewer, params }) => {
+  route("GET", /^\/api\/jobs\/([\w-]+)\/video\/(\d)$/, ({ viewer, params, url }) => {
     const row = db.get("SELECT data FROM jobs WHERE id = ?", params[0]);
     const job = row && JSON.parse(row.data);
     if (!job || !views.brandOk(viewer, job.brand) || !job.video) fail(404, "That video isn't available.");
-    const n = Number(params[1]), file = job.video.files[n] && path.join(videoDir, path.basename(job.video.files[n]));
+    // The edited version is shown unless the original is asked for with ?raw=1.
+    const n = Number(params[1]), edited = !url.searchParams.get("raw") && job.video.edited && job.video.edited[n];
+    const name = edited || job.video.files[n], file = name && path.join(videoDir, path.basename(name));
     if (file && fs.existsSync(file)) return { __file: file, type: "video/mp4", name: `${job.id}-${n + 1}.mp4` };
     if (job.video.urls[n]) return { __redirect: job.video.urls[n] };
     fail(404, "That video isn't available.");

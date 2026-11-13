@@ -14,12 +14,14 @@ The agency's private dashboard. It runs on the agency's own computer and is buil
 | Higgsfield connection: the admin signs in once, Tracker reads the real balance and creates real videos | Built. Higgsfield's sign-in was checked against the real service; the rest was tested against a stand-in, so **the first real run on your computer is the final test** |
 | Credit budget that makes a month of credits last | Done |
 | Euka and Slack connections | **Not connected yet.** Tracker starts with sample data, clearly labelled |
-| Video pipeline | The **video** step is real once Higgsfield is connected. Script, editing, supervisor and posting are still placeholders, and say so on screen |
+| Editing with MoviePy: opening caption, end card, music | Done. Runs on the Tracker computer and costs no credits |
+| Video pipeline | The **video** and **editing** steps are real once Higgsfield is connected. Script, supervisor and posting are still placeholders, and say so on screen |
+| Tracking how posted videos perform | **Not built yet.** See "Tracking posted videos" below for the plan |
 | Tracker AI | **Prepared answers** to common questions until Claude is connected |
 
 ## Start Tracker
 
-You need [Node.js](https://nodejs.org) version 22.13 or newer. Nothing else is installed.
+You need [Node.js](https://nodejs.org) version 22.13 or newer. For the editing step you also need [Python](https://www.python.org) with MoviePy (see "Editing" below); without it Tracker still runs and clips are used unedited.
 
 On the computer that will host Tracker, open a terminal in this folder and run:
 
@@ -64,6 +66,35 @@ For the first real request, pick **Draft, 5 seconds, 1 variation** (5 credits) t
 Until Higgsfield is connected, video requests are **practice runs**: nothing is created and no credits are spent.
 
 Finished videos are saved in `data/videos` and can be played and downloaded from the request. Posting to social accounts is not connected yet, so an approved video is downloaded and posted by hand.
+
+## Editing
+
+After Higgsfield delivers a clip, Tracker can edit it with [MoviePy](https://github.com/Zulko/moviepy) on its own computer. Editing costs no credits. Post more offers:
+
+- **Opening caption:** text on screen for the first 3 seconds.
+- **End card:** the brand's name and a button such as "Shop now", added as 2 extra seconds.
+- **Music:** a track mixed quietly under the clip's own sound.
+
+The original clip is always kept; the request shows the edited version with a link to the original. If a clip can't be edited, the original is used and the request still finishes.
+
+To set it up on the computer that runs Tracker, install Python, then:
+
+```bash
+pip install "git+https://github.com/Zulko/moviepy.git"
+```
+
+Restart Tracker afterwards. **Connections → Editing (MoviePy)** shows "Ready" when it is found.
+
+- **Music:** put `.mp3` files in `data/music`. Only use music you have the rights to use in ads.
+- **Your own font:** put one `.ttf` or `.otf` file in `data/fonts` and captions use it.
+
+## Tracking posted videos
+
+Not built yet. The plan, in order of how soon each part can work:
+
+1. **TikTok Shop videos through Euka.** Euka already records views, likes, comments, items sold and sales for each of a brand's videos, per day. Tracker will read those for every brand and fill the Brands and Home pages with real numbers. This needs Euka access for Tracker itself (an API key or app connection from Euka).
+2. **Matching Tracker's own videos.** When an approved video is posted, the employee pastes its link into the request. Tracker then follows that video's numbers and shows them on the request and in News.
+3. **Instagram, YouTube and Facebook.** Each needs its own official connection (Meta for Instagram and Facebook, Google for YouTube), set up once per brand account by the admin. These take longer because Meta and TikTok review an app before it may read account statistics.
 
 ## The credit budget
 
@@ -113,6 +144,7 @@ News posts are written as text, so a post can mention results or spend. Only giv
 | `server/db.js` | The database (one file in `data/`) and the sample data loader |
 | `server/pipeline.js` | The video request pipeline. Steps that are still placeholders are marked `LIVE` |
 | `server/budget.js` | The credit budget rules and prices |
+| `server/edit.py`, `server/editor.js` | The editing step (MoviePy) |
 | `server/higgsfield.js`, `server/mcp.js` | The Higgsfield connection |
 | `dashboard/` | The interface. `data.js` holds the sample data |
 | `tests/` | Automated checks (below) |
@@ -125,11 +157,11 @@ Opening `dashboard/index.html` directly, without the server, still works as a no
 npm test
 ```
 
-Runs four checks: the server's sign-in and permission rules; the credit budget and the Higgsfield connection (against a stand-in for Higgsfield, so no credits are spent); the demo in a browser as every person; and the real server in a browser. The two browser checks need Playwright.
+Runs five checks: the server's sign-in and permission rules; the credit budget and the Higgsfield connection (against a stand-in for Higgsfield, so no credits are spent); the editing step on a real clip; the demo in a browser as every person; and the real server in a browser. The editing check needs Python with MoviePy and the two browser checks need Playwright.
 
 ## Next
 
-1. **Higgsfield, deeper:** link each brand's products and photos so videos show the real product, and use Higgsfield's TikTok publishing.
+1. **Higgsfield, deeper:** link each brand's products and photos so videos show the real product. (Higgsfield's own TikTok publishing can't be used from Tracker: it only works inside Higgsfield's chat apps and only for files hosted by Higgsfield.)
 2. **Euka and Slack sync:** real brands, videos and results, and the News agent writing real posts.
 3. **Claude:** real scripts, supervisor checks and Tracker AI answers.
-4. **Posting:** each brand's social accounts connected through the platform's official login.
+4. **Posting and tracking:** each brand's social accounts connected through the platform's official login. See "Tracking posted videos" above.

@@ -110,10 +110,16 @@ const check = (ok, msg) => { if (!ok) { issues.push(msg); console.log("ISSUE:", 
   check(!a.url().includes("hf="), "the result marker should be cleared from the address bar");
   check((await a.textContent(".usage")).includes("Higgsfield credits") && (await a.textContent(".usage")).includes("600"), "the credits card should show the real balance");
   check(await a.isVisible("#budget"), "the budget card should be on Connections");
+  check(!(await a.textContent("#work")).includes("${"), "no unrendered code should show on the page");
+  check(await a.isVisible(".conn:has-text('Editing') .pill.good"), "the editor should show as ready");
   await snap(a, "live-8-connections-after");
   await a.goto(U + "/#brand-pawsome-pantry"); await a.waitForSelector('[data-action="post-more"]');
-  await a.click('[data-action="post-more"]'); await a.click("#job-form button[type=submit]");
-  await a.waitForSelector(".clips video", { timeout: 30000 });
+  await a.click('[data-action="post-more"]');
+  check(await a.isChecked("#j-endcard") && !(await a.isDisabled("#j-caption")), "editing options should be offered when MoviePy is installed");
+  await a.fill("#j-caption", "He refuses everything. Except this.");
+  await snap(a, "live-9a-form");
+  await a.click("#job-form button[type=submit]");
+  await a.waitForSelector(".clips video", { timeout: 60000 });
   check(!(await a.isVisible("text=Practice run")), "a real run must not be labelled practice");
   check((await a.textContent(".usage")).includes("585"), "15 credits should have left the real balance");
   await snap(a, "live-9-real-video");

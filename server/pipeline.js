@@ -3,8 +3,10 @@
 // What is real depends on what is connected:
 //   • Higgsfield connected: the VIDEO step really creates the clips, spends
 //     real credits and saves the files on this computer.
+//     The EDIT step then adds a caption, an end card and music with MoviePy,
+//     on this computer, if the request asked for any of them.
 //   • Not connected: every step only advances a progress bar (a practice run).
-// The script, editing and supervisor steps are still placeholders. Each place
+// The script and supervisor steps are still placeholders. Each place
 // where a real service will plug in is marked LIVE.
 "use strict";
 const fs = require("node:fs");
@@ -13,7 +15,7 @@ const path = require("node:path");
 const STEPS = [
   { key: "script", name: "Script", ticks: 6 },      // LIVE: Claude writes the script
   { key: "video", name: "Higgsfield video", ticks: 9 },
-  { key: "edit", name: "Editing", ticks: 7 },       // LIVE: captions, music, end card
+  { key: "edit", name: "Editing", ticks: 7 },
   { key: "supervisor", name: "Supervisor", ticks: 4 }, // LIVE: Claude reviews the result
 ];
 const PRACTICE_NOTES = {
@@ -74,12 +76,12 @@ function tickPlaceholder(job, i) {
   s.progress = Math.min(100, s.progress + (100 / def.ticks) * (0.7 + Math.random() * 0.6));
   if (def.key === "video" && s.progress > 45 && !s.mid) { s.mid = 1; log(job, "Higgsfield", `Rendering clip ${job.variations * 2} of ${job.variations * 4}…`); }
   if (s.progress >= 100) {
-    if (!job.simulated) job.outputs[def.key] = { script: "Prompt built from the brief. No script was written because Claude isn't connected yet.", edit: "No editing yet: the Higgsfield clip is used as it is.", supervisor: "Checked that every clip arrived." }[def.key];
+    if (!job.simulated) job.outputs[def.key] = { script: "Prompt built from the brief. No script was written because Claude isn't connected yet.", supervisor: "Checked that every clip arrived." }[def.key];
     finishStep(job, i, notes[1]);
   }
 }
 
-function create({ db, hf, budget, videoDir, pollMs = 8000 }) {
+function create({ db, hf, budget, editor, videoDir, pollMs = 8000 }) {
   const busy = new Set();
   const save = (job) => db.run("UPDATE jobs SET status = ?, data = ? WHERE id = ?", job.status, JSON.stringify(job), job.id);
   const charge = (job, status, credits) => {
@@ -156,6 +158,34 @@ function create({ db, hf, budget, videoDir, pollMs = 8000 }) {
     save(job);
   }
 
+  // The real editing step: MoviePy adds what the request asked for to each saved clip.
+  async function advanceEdit(job) {
+    const s = job.steps[2], v = job.video, e = job.edit || {};
+    const wants = [e.caption && "a caption", e.endCard && "an end card", e.music && "music"].filter(Boolean);
+    const skip = (output, note) => { job.outputs.edit = output; finishStep(job, 2, note); save(job); };
+    s.status = "working"; s.progress = 5;
+    if (!wants.length) return skip("No edits were asked for, so the Higgsfield clip is used as it is.", "No editing needed.");
+    if (!(await editor.status()).ok) return skip("MoviePy isn't installed on the Tracker computer, so the clip is used without edits.", "Editing was skipped: MoviePy isn't installed on this computer.");
+    log(job, "Supervisor", `Editing agent is adding ${wants.join(", ").replace(/, ([^,]*)$/, " and $1")} with MoviePy.`);
+    save(job);
+    v.edited = [];
+    for (let n = 0; n < v.files.length; n++) {
+      v.edited[n] = null;
+      if (!v.files[n]) { log(job, "Editing", `Clip ${n + 1} isn't saved on this computer, so it can't be edited.`); continue; }
+      const out = v.files[n].replace(/\.mp4$/, "-edit.mp4");
+      try {
+        await editor.edit({ input: path.join(videoDir, v.files[n]), output: path.join(videoDir, out), caption: e.caption, endCard: e.endCard, brand: job.brandName, cta: e.cta, hue: job.hue, music: e.music });
+        v.edited[n] = out;
+      } catch (err) { log(job, "Editing", `Couldn't edit clip ${n + 1} (${String(err.message).slice(0, 160)}). The original is kept.`); }
+      s.progress = 5 + (95 * (n + 1)) / v.files.length;
+      save(job);
+    }
+    const ok = v.edited.filter(Boolean).length;
+    job.outputs.edit = ok ? `${ok} clip${ok > 1 ? "s" : ""} edited with MoviePy: ${wants.join(", ").replace(/\ba |\ban /g, "")}` : "Editing didn't work, so the original clips are kept.";
+    finishStep(job, 2, ok ? "Edit done." : "Editing failed; using the original clips.");
+    save(job);
+  }
+
   function tickAll() {
     for (const row of db.all("SELECT id, data FROM jobs WHERE status = 'running'")) {
       if (busy.has(row.id)) continue;
@@ -165,6 +195,9 @@ function create({ db, hf, budget, videoDir, pollMs = 8000 }) {
       if (STEPS[i].key === "video" && !job.simulated) {
         busy.add(job.id);
         advanceVideo(job).catch((e) => { console.error(e); try { fail(job, "Something went wrong while making the video."); save(job); } catch {} }).finally(() => busy.delete(job.id));
+      } else if (STEPS[i].key === "edit" && !job.simulated) {
+        busy.add(job.id);
+        advanceEdit(job).catch((e) => { console.error(e); try { job.outputs.edit = "Editing didn't work, so the original clips are kept."; finishStep(job, 2, "Editing failed; using the original clips."); save(job); } catch {} }).finally(() => busy.delete(job.id));
       } else { tickPlaceholder(job, i); save(job); }
     }
   }

@@ -9,7 +9,7 @@ const crypto = require("node:crypto");
 const PER_SEC = { seedance_2_0_mini: 1, seedance_2_0: 2.5, marketing_studio_video: 5 };
 
 function createMock({ credits = 600, grantDay = new Date().getDate(), pollsToFinish = 2 } = {}) {
-  const state = { credits, pollsToFinish, failNext: false, garbleNext: false, clients: new Set(), codes: new Map(), tokens: new Set(), refresh: new Set(), jobs: new Map(), calls: [], origin: "" };
+  const state = { credits, pollsToFinish, failNext: false, garbleNext: false, videoFile: null, clients: new Set(), codes: new Map(), tokens: new Set(), refresh: new Set(), jobs: new Map(), calls: [], origin: "" };
   const sendJson = (res, status, body, headers = {}) => { res.writeHead(status, { "Content-Type": "application/json", ...headers }); res.end(JSON.stringify(body)); };
   const read = (req) => new Promise((r) => { let b = ""; req.on("data", (c) => (b += c)); req.on("end", () => r(b)); });
   const issue = () => { const access = "at_" + crypto.randomBytes(8).toString("hex"), refresh = "rt_" + crypto.randomBytes(8).toString("hex"); state.tokens.add(access); state.refresh.add(refresh); return { access_token: access, refresh_token: refresh, token_type: "Bearer", expires_in: 3600 }; };
@@ -73,7 +73,10 @@ function createMock({ credits = 600, grantDay = new Date().getDate(), pollsToFin
       if (f.get("grant_type") === "refresh_token" && state.refresh.has(f.get("refresh_token"))) { state.refresh.delete(f.get("refresh_token")); return sendJson(res, 200, issue()); }
       return sendJson(res, 400, { error: "invalid_grant", error_description: "Sign in again." });
     }
-    if (url.pathname.startsWith("/files/")) { res.writeHead(200, { "Content-Type": "video/mp4" }); return res.end(Buffer.from("fake mp4 bytes for " + url.pathname)); }
+    if (url.pathname.startsWith("/files/")) {
+      res.writeHead(200, { "Content-Type": "video/mp4" });
+      return res.end(state.videoFile ? require("node:fs").readFileSync(state.videoFile) : Buffer.from("fake mp4 bytes for " + url.pathname)); // a real clip when a test provides one
+    }
     if (url.pathname === "/mcp") {
       const token = (req.headers.authorization || "").replace("Bearer ", "");
       if (!state.tokens.has(token)) return sendJson(res, 401, { error: "Unauthorized" }, { "WWW-Authenticate": "Bearer" });

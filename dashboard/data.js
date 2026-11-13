@@ -41,6 +41,7 @@
     agency: "Your Agency",
     product: "Tracker",
     lastSync: { euka: "2026-10-31T09:42:00", slack: "2026-10-31T09:45:00" },
+    editing: { available: true, version: "2.2.0", music: ["upbeat-pop.mp3", "soft-acoustic.mp3"] },
     // The credit budget as Tracker would show it on 12 Nov with 373 credits left of 600.
     credits: {
       connected: true, plan: "pro", balance: 373.3, left: 373.3, monthly: 600, reserve: 60, reservePct: 10, requestCap: 75, renewDay: 5,

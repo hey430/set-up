@@ -660,6 +660,12 @@
       ? `<span class="sub">${c.plan ? esc(c.plan[0].toUpperCase() + c.plan.slice(1)) + " plan · " : ""}${c.balance === null || c.balance === undefined ? "balance not read yet" : fmtC(c.balance) + " credits"}</span><div><button class="btn sm" data-action="hf-disconnect">Disconnect</button></div>`
       : `<div><button class="btn sm primary" data-action="hf-connect">Connect Higgsfield</button></div><span class="hint">You sign in on Higgsfield's own page. Do this on the computer that runs Tracker.</span>`;
   }
+  function editingNotes(on) {
+    const ed = D.editing || { music: [] };
+    return on
+      ? `<span class="sub">MoviePy ${esc(ed.version)} · ${ed.music.length ? ed.music.length + " music track" + (ed.music.length === 1 ? "" : "s") : "no music added"}</span><span class="hint">To offer music, put .mp3 files you have the rights to in Tracker's data/music folder.</span>`
+      : `<span class="hint">Install Python and MoviePy on the computer that runs Tracker, then restart Tracker. The README has the command.</span>`;
+  }
   function budgetCard() {
     const c = D.credits; if (!c) return "";
     const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -699,12 +705,13 @@
       ["S", "Slack", cn.slack, "Reads client channels for the News agent. Posts approvals and alerts."],
       ["E", "Euka", cn.euka, "Brands, creators, videos, specs and TikTok Shop results."],
       ["H", "Higgsfield", cn.higgsfield, "Generates new videos from the scripts the agents write."],
-      ["AI", "Claude", cn.claude, "Runs the AI assistant and the script, editing and supervisor agents."],
+      ["AI", "Claude", cn.claude, "Runs the AI assistant and the script and supervisor agents."],
+      ["M", "Editing (MoviePy)", LIVE ? !!(D.editing && D.editing.available) : true, "Adds a caption, an end card and music to finished clips, on this computer. Costs no credits."],
     ];
     return `
       ${topline()}
       <div class="page-head"><div><span class="eyebrow">Admin · Connections</span><h1>Connections</h1><p>Connected once by an admin and shared by everyone, so employees never log in to these services or see the passwords.</p></div></div>
-      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? '<span class="pill good">Connected</span>' : '<span class="pill plain">Not connected yet</span>'}</div><p>${d}</p>${n === "Higgsfield" && LIVE ? higgsfieldControls(on) : ""}</div>`).join("")}</div>
+      <div class="conn-grid">${svc.map(([l, n, on, d]) => `<div class="conn"><div class="conn-top"><span class="conn-logo">${l}</span><b style="flex:1">${n}</b>${on ? `<span class="pill good">${n.startsWith("Editing") ? "Ready" : "Connected"}</span>` : `<span class="pill plain">${n.startsWith("Editing") ? "Not installed" : "Not connected yet"}</span>`}</div><p>${d}</p>${n === "Higgsfield" && LIVE ? higgsfieldControls(on) : ""}${n.startsWith("Editing") && LIVE ? editingNotes(on) : ""}</div>`).join("")}</div>
       ${budgetCard()}
       ${LIVE && D.sample ? `<div class="callout warn preview-bar"><span>Tracker is showing <b>sample data</b>: made-up brands, videos and news.</span><button class="btn sm" data-action="clear-sample">Remove sample data</button></div>` : ""}
       <div class="section-head"><h2>Social accounts for posting</h2></div>
@@ -860,6 +867,7 @@
           <div class="field"><label for="j-var">Variations</label><select id="j-var"><option selected>1</option><option>2</option><option>3</option></select></div>
         </div><span class="hint" id="j-note"></span></div>
         <div class="field full"><div class="callout" id="j-cost" role="status"></div></div>
+        ${editFields()}
         <div class="field full"><span class="label">Post to</span>
           <div class="checks cols">${accts.map((a, i) => `<label class="check"><input type="checkbox" name="acct" value="${i}" ${a.connected ? (i === 0 ? "checked" : "") : "disabled"}><div><b>${esc(a.platform)}</b><span>${esc(a.handle)}${a.connected ? "" : " · admin must connect"}</span></div></label>`).join("") || '<span class="muted">No accounts connected for this brand. Ask an admin.</span>'}</div>
           <span class="hint">Accounts are connected by an admin, so you never type social media passwords here.</span></div>
@@ -872,13 +880,13 @@
       const t = tierOf($("#j-tier").value), seconds = +$("#j-len").value, variations = +$("#j-var").value, cost = costOf(t, seconds, variations);
       if (costProblem(cost)) return updateCost();
       if (LIVE) {
-        const payload = { brand: b.id, product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), tier: t.key, seconds, variations, accounts: $$("[name=acct]:checked").map((i) => accts[+i.value].id) };
+        const payload = { brand: b.id, product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), tier: t.key, seconds, variations, edit: readEdit(), accounts: $$("[name=acct]:checked").map((i) => accts[+i.value].id) };
         change(() => api("POST", "/api/jobs", payload), (out) => openJob(out.id));
         return;
       }
       const job = {
         id: "VR-" + (101 + state.jobs.length), brand: b.id, by: me().name, created: new Date().toISOString(),
-        product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: `${seconds} sec`, seconds, variations, tier: t.key, tierLabel: t.label, cost,
+        product: $("#j-product").value, style: $("#j-style").value, brief: $("#j-brief").value.trim(), length: `${seconds} sec`, seconds, variations, tier: t.key, tierLabel: t.label, cost, edit: readEdit(),
         accounts: $$("[name=acct]:checked").map((i) => accts[+i.value]), steps: AGENTS.map((a) => ({ key: a.key, status: "queued", progress: 0 })),
         log: [], status: "running", revision: 0, hue: (hueOf(b.name) % 80) + 240,
       };
@@ -969,6 +977,20 @@
       ${isAdmin() ? '<a href="#connections">Manage budget</a>' : ""}
     </div>`;
   }
+  // What the editing step (MoviePy, on the Tracker computer) should add. It costs no credits.
+  function editFields() {
+    const ed = D.editing || { available: false, music: [] };
+    const off = LIVE && !ed.available ? "disabled" : "";
+    return `<div class="field full"><span class="label">Editing <span class="hint" style="font-weight:400">· added on the Tracker computer, costs no credits</span></span>
+        ${off ? '<div class="callout warn">Editing isn\'t available: MoviePy isn\'t installed on the computer that runs Tracker. The clip will be used as it is.</div>' : ""}
+        <div class="tri">
+          <div class="field" style="grid-column:span 2"><label for="j-caption">Opening caption (optional)</label><input id="j-caption" maxlength="90" placeholder="Text on screen for the first 3 seconds" ${off}></div>
+          <div class="field"><label for="j-music">Music</label><select id="j-music" ${off || (ed.music.length ? "" : "disabled")}><option value="">${ed.music.length ? "No music" : "No music added yet"}</option>${ed.music.map((m) => `<option value="${esc(m)}">${esc(m.replace(/\.[^.]+$/, ""))}</option>`).join("")}</select></div>
+          <label class="check" style="grid-column:span 2"><input type="checkbox" id="j-endcard" ${off ? "disabled" : "checked"}><div><b>End card</b><span>The brand's name and a button, added as 2 extra seconds at the end</span></div></label>
+          <div class="field"><label for="j-cta">Button text</label><input id="j-cta" maxlength="30" value="Shop now" ${off}></div>
+        </div></div>`;
+  }
+  const readEdit = () => ({ caption: $("#j-caption").value.trim(), endCard: $("#j-endcard").checked, cta: $("#j-cta").value.trim() || "Shop now", music: $("#j-music").value });
   function updateCost() {
     const t = tierOf($("#j-tier").value), len = $("#j-len");
     if (len.dataset.tier !== t.key) { // each quality has its own lengths
@@ -993,6 +1015,8 @@
     const stepPill = (s) => s.status === "done" ? ["good", "Done"] : s.status === "working" ? ["purple", "Working"] : s.status === "failed" ? ["bad", "Stopped"] : ["plain", "Queued"];
     const clips = real && job.video ? job.video.files.map((_, n) => `/api/jobs/${job.id}/video/${n}?v=${job.revision}`) : [];
     const cost = job.cost ? `${fmtC(job.cost)} credits` : "";
+    const edited = real && job.video && job.video.edited ? job.video.edited : [];
+    const anyEdited = edited.some(Boolean);
     const approveBtn = `<button class="btn primary" data-job-act="approve" ${job.accounts.length ? "" : "disabled"}>${I.send} ${real ? "Approve" : "Approve and publish"}</button>`;
     const noAccount = job.accounts.length ? "" : '<span class="hint">No posting account was selected for this request.</span>';
     const reviseBtn = `<button class="btn" data-job-act="revise">${real ? `Make a new version (${cost})` : "Request changes"}</button>`;
@@ -1021,7 +1045,7 @@
         <div class="result-main">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(job.product)} · ${esc(job.length)}</b>${statusPill}</div>
           ${real
-            ? `<span class="muted" style="font-size:13px">${clips.length} clip${clips.length === 1 ? "" : "s"} made by Higgsfield from your brief. Captions, music and automatic posting aren't connected yet.</span>`
+            ? `<span class="muted" style="font-size:13px">${clips.length} clip${clips.length === 1 ? "" : "s"} made by Higgsfield from your brief${anyEdited ? ", then edited on this computer" : ""}. Automatic posting isn't connected yet.${anyEdited ? " " + clips.map((src, n) => edited[n] ? `<a href="${src}&raw=1" target="_blank" rel="noopener">Original${clips.length > 1 ? " " + (n + 1) : ""}</a>` : "").filter(Boolean).join(" · ") : ""}</span>`
             : `<div class="script">${esc(`Hook: ${job.hook}\nBeat 1: Show the everyday problem in a quick close-up.\nBeat 2: ${job.product} in use, real hands, natural light.\nBeat 3: The result, then "Shop now" with the brand end card.`)}</div>`}
           ${job.status === "posted"
             ? (real
@@ -1043,7 +1067,7 @@
         <div class="brief-summary card" style="background:var(--panel-2)">
           <span class="eyebrow">Your brief</span>
           <p style="margin:0">${esc(job.brief)}</p>
-          <dl class="specs"><dt>Product</dt><dd class="text">${esc(job.product)}</dd><dt>Style</dt><dd class="text">${esc(job.style)}</dd>${job.tierLabel ? `<dt>Quality</dt><dd class="text">${esc(job.tierLabel)}</dd>` : ""}<dt>Length</dt><dd>${esc(job.length)}</dd><dt>Variations</dt><dd>${job.variations}</dd>${job.cost ? `<dt>Cost</dt><dd>${fmtC(job.cost)} credits${LIVE && job.simulated ? " (practice)" : ""}</dd>` : ""}<dt>Post to</dt><dd class="text">${job.accounts.map((a) => esc(a.platform)).join(", ") || "Not selected"}</dd></dl>
+          <dl class="specs"><dt>Product</dt><dd class="text">${esc(job.product)}</dd><dt>Style</dt><dd class="text">${esc(job.style)}</dd>${job.tierLabel ? `<dt>Quality</dt><dd class="text">${esc(job.tierLabel)}</dd>` : ""}<dt>Length</dt><dd>${esc(job.length)}</dd><dt>Variations</dt><dd>${job.variations}</dd>${job.cost ? `<dt>Cost</dt><dd>${fmtC(job.cost)} credits${LIVE && job.simulated ? " (practice)" : ""}</dd>` : ""}${job.edit ? `<dt>Editing</dt><dd class="text">${[job.edit.caption && "Caption", job.edit.endCard && "End card", job.edit.music && "Music"].filter(Boolean).join(", ") || "None"}</dd>` : ""}<dt>Post to</dt><dd class="text">${job.accounts.map((a) => esc(a.platform)).join(", ") || "Not selected"}</dd></dl>
         </div>
         <div id="pipeline" style="display:flex;flex-direction:column;gap:14px">${pipelineHtml(job)}</div>
       </div>`, true);

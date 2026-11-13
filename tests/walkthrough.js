@@ -23,6 +23,7 @@ const note = (m) => { issues.push(m); console.log("ISSUE:", m); };
         if (sw > w) note(`${w}px ${label} ${r}: page scrolls sideways (${sw})`);
         const empty = await p.evaluate(() => document.querySelector("#work").innerText.trim().length < 20);
         if (empty) note(`${w}px ${label} ${r}: blank page`);
+        if (await p.evaluate(() => document.querySelector("#work").innerText.includes("${"))) note(`${w}px ${label} ${r}: unrendered code shows on the page`);
         if (uid !== "admin" && ["employees", "connections"].includes(r) && got === r) note(`${label} reached admin page ${r}`);
         if (uid !== "admin" && (await p.$('[data-action="add-brand"]'))) note(`${label} sees Add brand on ${r}`);
       }
